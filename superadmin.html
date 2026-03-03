@@ -1,0 +1,2429 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="FIXORA - Panel de Superadministrador">
+    <meta name="theme-color" content="#0A0A0F">
+    <title>FIXORA - Superadmin</title>
+    
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        /* ============================================
+           FIXORA SUPERADMIN - PROFESSIONAL DARK THEME
+           ============================================ */
+        
+        /* Reset & Variables */
+        *, *::before, *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        :root {
+            /* Colors */
+            --primary: #6366F1;
+            --primary-dark: #4F46E5;
+            --primary-light: #818CF8;
+            --primary-glow: rgba(99, 102, 241, 0.4);
+            --primary-subtle: rgba(99, 102, 241, 0.1);
+            
+            --secondary: #8B5CF6;
+            --accent: #06B6D4;
+            --gold: #F59E0B;
+            
+            --success: #10B981;
+            --success-bg: rgba(16, 185, 129, 0.1);
+            --success-border: rgba(16, 185, 129, 0.3);
+            --warning: #F59E0B;
+            --warning-bg: rgba(245, 158, 11, 0.1);
+            --warning-border: rgba(245, 158, 11, 0.3);
+            --error: #EF4444;
+            --error-bg: rgba(239, 68, 68, 0.1);
+            --error-border: rgba(239, 68, 68, 0.3);
+            --info: #3B82F6;
+            --info-bg: rgba(59, 130, 246, 0.1);
+            --info-border: rgba(59, 130, 246, 0.3);
+            
+            /* Backgrounds */
+            --bg-dark: #0A0A0F;
+            --bg-darker: #050508;
+            --bg-card: #12121A;
+            --bg-elevated: #1A1A24;
+            --bg-input: #0D0D14;
+            
+            /* Text */
+            --text-primary: #FFFFFF;
+            --text-secondary: #A1A1AA;
+            --text-muted: #71717A;
+            --text-disabled: #52525B;
+            
+            /* Borders */
+            --border-subtle: rgba(255, 255, 255, 0.06);
+            --border-light: rgba(255, 255, 255, 0.1);
+            --border-medium: rgba(255, 255, 255, 0.15);
+            
+            /* Layout */
+            --sidebar-width: 280px;
+            --sidebar-collapsed: 80px;
+            --topbar-height: 72px;
+            
+            /* Shadows */
+            --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+            --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
+            --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
+            --shadow-glow: 0 0 40px var(--primary-glow);
+            
+            /* Radius */
+            --radius-sm: 6px;
+            --radius-md: 10px;
+            --radius-lg: 14px;
+            --radius-xl: 20px;
+            
+            /* Transitions */
+            --transition-fast: 0.15s ease;
+            --transition-base: 0.25s ease;
+            --transition-slow: 0.4s ease;
+        }
+        
+        /* Base */
+        html {
+            font-size: 16px;
+            scroll-behavior: smooth;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+        
+        /* Animated Background */
+        .animated-bg {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            overflow: hidden;
+            pointer-events: none;
+        }
+        
+        .gradient-orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(120px);
+            opacity: 0.4;
+            animation: float 30s ease-in-out infinite;
+        }
+        
+        .orb-1 {
+            width: 800px;
+            height: 800px;
+            background: radial-gradient(circle, var(--primary) 0%, transparent 70%);
+            top: -400px;
+            left: -300px;
+            animation-delay: 0s;
+        }
+        
+        .orb-2 {
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, var(--secondary) 0%, transparent 70%);
+            bottom: -200px;
+            right: -200px;
+            animation-delay: -10s;
+        }
+        
+        .orb-3 {
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, var(--gold) 0%, transparent 70%);
+            top: 40%;
+            right: 30%;
+            animation-delay: -20s;
+            opacity: 0.2;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            25% { transform: translate(50px, -50px) scale(1.05); }
+            50% { transform: translate(-30px, 40px) scale(0.95); }
+            75% { transform: translate(-50px, -30px) scale(1.02); }
+        }
+        
+        .grid-pattern {
+            position: absolute;
+            inset: 0;
+            background-image: 
+                linear-gradient(rgba(255,255,255,0.012) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.012) 1px, transparent 1px);
+            background-size: 100px 100px;
+        }
+        
+        /* App Layout */
+        .app-layout {
+            display: flex;
+            min-height: 100vh;
+            position: relative;
+            z-index: 1;
+        }
+        
+        /* ============================================
+           SIDEBAR
+           ============================================ */
+        .sidebar {
+            width: var(--sidebar-width);
+            height: 100vh;
+            position: fixed;
+            left: 0;
+            top: 0;
+            background: rgba(18, 18, 26, 0.8);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-right: 1px solid var(--border-subtle);
+            display: flex;
+            flex-direction: column;
+            z-index: 100;
+            transition: all var(--transition-base);
+        }
+        
+        .sidebar.collapsed {
+            width: var(--sidebar-collapsed);
+        }
+        
+        .sidebar-header {
+            padding: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+        
+        .sidebar-logo {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+        
+        .sidebar-logo-icon {
+            width: 46px;
+            height: 46px;
+            background: linear-gradient(135deg, var(--gold), var(--warning));
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            box-shadow: 0 4px 20px rgba(245, 158, 11, 0.4);
+            animation: pulse-gold 3s ease-in-out infinite;
+            flex-shrink: 0;
+        }
+        
+        @keyframes pulse-gold {
+            0%, 100% { box-shadow: 0 4px 20px rgba(245, 158, 11, 0.3); }
+            50% { box-shadow: 0 4px 35px rgba(245, 158, 11, 0.5); }
+        }
+        
+        .sidebar-logo-text {
+            font-size: 24px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            background: linear-gradient(135deg, var(--gold), var(--warning));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .sidebar.collapsed .sidebar-logo-text {
+            display: none;
+        }
+        
+        .sidebar-toggle {
+            width: 36px;
+            height: 36px;
+            border-radius: var(--radius-md);
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-light);
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all var(--transition-fast);
+        }
+        
+        .sidebar-toggle:hover {
+            background: var(--primary-subtle);
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+        
+        .sidebar-toggle svg {
+            width: 18px;
+            height: 18px;
+        }
+        
+        .sidebar-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            margin: 16px 24px;
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(234, 179, 8, 0.1));
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            border-radius: 50px;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--gold);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        .sidebar.collapsed .sidebar-badge {
+            display: none;
+        }
+        
+        .sidebar-badge svg {
+            width: 14px;
+            height: 14px;
+        }
+        
+        /* Sidebar Navigation */
+        .sidebar-nav {
+            flex: 1;
+            padding: 16px 12px;
+            overflow-y: auto;
+        }
+        
+        .sidebar-nav-label {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+            padding: 12px 16px 8px;
+            margin-top: 8px;
+        }
+        
+        .sidebar.collapsed .sidebar-nav-label {
+            display: none;
+        }
+        
+        .sidebar-link {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 14px 18px;
+            margin-bottom: 4px;
+            border-radius: var(--radius-md);
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all var(--transition-fast);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .sidebar-link::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: var(--gold);
+            border-radius: 0 3px 3px 0;
+            transform: scaleY(0);
+            transition: transform var(--transition-fast);
+        }
+        
+        .sidebar-link:hover {
+            background: rgba(255, 255, 255, 0.04);
+            color: var(--text-primary);
+        }
+        
+        .sidebar-link.active {
+            background: linear-gradient(90deg, rgba(245, 158, 11, 0.15), transparent);
+            color: var(--gold);
+        }
+        
+        .sidebar-link.active::before {
+            transform: scaleY(1);
+        }
+        
+        .sidebar-link svg {
+            width: 20px;
+            height: 20px;
+            flex-shrink: 0;
+        }
+        
+        .sidebar.collapsed .sidebar-link {
+            justify-content: center;
+            padding: 14px;
+        }
+        
+        .sidebar.collapsed .sidebar-link span {
+            display: none;
+        }
+        
+        .sidebar-link-badge {
+            margin-left: auto;
+            padding: 3px 8px;
+            background: var(--error);
+            border-radius: 50px;
+            font-size: 11px;
+            font-weight: 700;
+            color: white;
+        }
+        
+        .sidebar.collapsed .sidebar-link-badge {
+            display: none;
+        }
+        
+        /* Sidebar Footer */
+        .sidebar-footer {
+            padding: 16px;
+            border-top: 1px solid var(--border-subtle);
+        }
+        
+        .sidebar-user {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            background: var(--bg-elevated);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-subtle);
+        }
+        
+        .sidebar-avatar {
+            width: 42px;
+            height: 42px;
+            background: linear-gradient(135deg, var(--gold), var(--warning));
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--bg-dark);
+            flex-shrink: 0;
+        }
+        
+        .sidebar-user-info {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .sidebar-user-name {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .sidebar-user-role {
+            display: block;
+            font-size: 12px;
+            color: var(--gold);
+            font-weight: 500;
+        }
+        
+        .sidebar.collapsed .sidebar-user-info {
+            display: none;
+        }
+        
+        .sidebar-logout {
+            width: 38px;
+            height: 38px;
+            border-radius: var(--radius-md);
+            background: transparent;
+            border: 1px solid var(--border-light);
+            color: var(--text-muted);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all var(--transition-fast);
+            flex-shrink: 0;
+        }
+        
+        .sidebar-logout:hover {
+            background: var(--error-bg);
+            border-color: var(--error);
+            color: var(--error);
+        }
+        
+        .sidebar-logout svg {
+            width: 18px;
+            height: 18px;
+        }
+        
+        .sidebar.collapsed .sidebar-logout {
+            display: none;
+        }
+        
+        /* ============================================
+           MAIN CONTENT
+           ============================================ */
+        .main-content {
+            flex: 1;
+            margin-left: var(--sidebar-width);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            transition: margin-left var(--transition-base);
+        }
+        
+        .sidebar.collapsed + .main-content {
+            margin-left: var(--sidebar-collapsed);
+        }
+        
+        /* Topbar */
+        .topbar {
+            height: var(--topbar-height);
+            padding: 0 32px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            background: rgba(18, 18, 26, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border-subtle);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+        
+        .topbar-menu-btn {
+            display: none;
+            width: 42px;
+            height: 42px;
+            border-radius: var(--radius-md);
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-light);
+            color: var(--text-primary);
+            cursor: pointer;
+            align-items: center;
+            justify-content: center;
+            transition: all var(--transition-fast);
+        }
+        
+        .topbar-menu-btn:hover {
+            background: var(--primary-subtle);
+            border-color: var(--primary);
+        }
+        
+        .topbar-menu-btn svg {
+            width: 20px;
+            height: 20px;
+        }
+        
+        .topbar-title {
+            flex: 1;
+        }
+        
+        .topbar-title h1 {
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+        
+        .topbar-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 18px;
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(139, 92, 246, 0.1));
+            border: 1px solid rgba(245, 158, 11, 0.2);
+            border-radius: 50px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--gold);
+        }
+        
+        .platform-badge .count {
+            font-weight: 800;
+            color: var(--text-primary);
+        }
+        
+        /* Page Content */
+        .page-content {
+            flex: 1;
+            padding: 32px;
+        }
+        
+        /* Page Sections */
+        .page-section {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        .page-section.active {
+            display: block;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* ============================================
+           DASHBOARD STATS
+           ============================================ */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin-bottom: 32px;
+        }
+        
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            transition: all var(--transition-fast);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: var(--stat-accent, var(--primary));
+        }
+        
+        .stat-card:nth-child(1) { --stat-accent: var(--gold); }
+        .stat-card:nth-child(2) { --stat-accent: var(--primary); }
+        .stat-card:nth-child(3) { --stat-accent: var(--accent); }
+        .stat-card:nth-child(4) { --stat-accent: var(--success); }
+        
+        .stat-card:hover {
+            border-color: var(--border-light);
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-lg);
+        }
+        
+        .stat-card-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+        
+        .stat-card-icon {
+            width: 50px;
+            height: 50px;
+            background: rgba(var(--stat-accent-rgb, 99, 102, 241), 0.1);
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .stat-card:nth-child(1) .stat-card-icon {
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--gold);
+        }
+        .stat-card:nth-child(2) .stat-card-icon {
+            background: rgba(99, 102, 241, 0.1);
+            color: var(--primary);
+        }
+        .stat-card:nth-child(3) .stat-card-icon {
+            background: rgba(6, 182, 212, 0.1);
+            color: var(--accent);
+        }
+        .stat-card:nth-child(4) .stat-card-icon {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+        }
+        
+        .stat-card-icon svg {
+            width: 26px;
+            height: 26px;
+        }
+        
+        .stat-card-trend {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 10px;
+            border-radius: 50px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .stat-card-trend.up {
+            background: var(--success-bg);
+            color: var(--success);
+        }
+        
+        .stat-card-trend.down {
+            background: var(--error-bg);
+            color: var(--error);
+        }
+        
+        .stat-card-trend svg {
+            width: 14px;
+            height: 14px;
+        }
+        
+        .stat-card-value {
+            font-size: 36px;
+            font-weight: 800;
+            color: var(--text-primary);
+            line-height: 1;
+            margin-bottom: 6px;
+        }
+        
+        .stat-card-label {
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+        
+        /* ============================================
+           CARDS
+           ============================================ */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            transition: all var(--transition-fast);
+        }
+        
+        .card:hover {
+            border-color: var(--border-light);
+        }
+        
+        .card-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border-subtle);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--bg-elevated);
+        }
+        
+        .card-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .card-title svg {
+            width: 20px;
+            height: 20px;
+            color: var(--gold);
+        }
+        
+        .card-body {
+            padding: 24px;
+        }
+        
+        .card-body.p-0 {
+            padding: 0;
+        }
+        
+        /* Grid Layout */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 24px;
+        }
+        
+        /* ============================================
+           TABLES
+           ============================================ */
+        .table-container {
+            overflow-x: auto;
+        }
+        
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .data-table th {
+            padding: 14px 20px;
+            text-align: left;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            background: var(--bg-elevated);
+            border-bottom: 1px solid var(--border-subtle);
+            white-space: nowrap;
+        }
+        
+        .data-table td {
+            padding: 16px 20px;
+            font-size: 14px;
+            color: var(--text-primary);
+            border-bottom: 1px solid var(--border-subtle);
+            vertical-align: middle;
+        }
+        
+        .data-table tbody tr {
+            transition: background var(--transition-fast);
+        }
+        
+        .data-table tbody tr:hover {
+            background: rgba(255, 255, 255, 0.02);
+        }
+        
+        .data-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .table-shop {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .table-shop-logo {
+            width: 42px;
+            height: 42px;
+            background: linear-gradient(135deg, var(--primary-subtle), rgba(139, 92, 246, 0.1));
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--primary);
+            flex-shrink: 0;
+        }
+        
+        .table-shop-info h4 {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 2px;
+        }
+        
+        .table-shop-info span {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+        
+        .table-user {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .table-user-avatar {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-subtle);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            flex-shrink: 0;
+        }
+        
+        .table-user-info h4 {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 2px;
+        }
+        
+        .table-user-info span {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+        
+        .table-actions {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+        }
+        
+        /* ============================================
+           BADGES
+           ============================================ */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 12px;
+            font-size: 12px;
+            font-weight: 600;
+            border-radius: 50px;
+            white-space: nowrap;
+        }
+        
+        .badge-success {
+            background: var(--success-bg);
+            border: 1px solid var(--success-border);
+            color: var(--success);
+        }
+        
+        .badge-warning {
+            background: var(--warning-bg);
+            border: 1px solid var(--warning-border);
+            color: var(--warning);
+        }
+        
+        .badge-error {
+            background: var(--error-bg);
+            border: 1px solid var(--error-border);
+            color: var(--error);
+        }
+        
+        .badge-info {
+            background: var(--info-bg);
+            border: 1px solid var(--info-border);
+            color: var(--info);
+        }
+        
+        .badge-premium {
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(234, 179, 8, 0.1));
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            color: var(--gold);
+        }
+        
+        .badge-pro {
+            background: linear-gradient(135deg, var(--primary-subtle), rgba(139, 92, 246, 0.1));
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            color: var(--primary-light);
+        }
+        
+        .badge-free {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-light);
+            color: var(--text-secondary);
+        }
+        
+        /* ============================================
+           BUTTONS
+           ============================================ */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px 20px;
+            font-size: 14px;
+            font-weight: 600;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            border: none;
+            font-family: inherit;
+            white-space: nowrap;
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .btn svg {
+            width: 18px;
+            height: 18px;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, var(--gold), var(--warning));
+            color: var(--bg-dark);
+            box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
+        }
+        
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 25px rgba(245, 158, 11, 0.4);
+        }
+        
+        .btn-secondary {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-light);
+            color: var(--text-primary);
+        }
+        
+        .btn-secondary:hover:not(:disabled) {
+            background: var(--bg-input);
+            border-color: var(--border-medium);
+        }
+        
+        .btn-ghost {
+            background: transparent;
+            color: var(--text-secondary);
+            padding: 8px 12px;
+        }
+        
+        .btn-ghost:hover {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-primary);
+        }
+        
+        .btn-icon {
+            width: 36px;
+            height: 36px;
+            padding: 0;
+            border-radius: var(--radius-md);
+            background: transparent;
+            border: 1px solid var(--border-subtle);
+            color: var(--text-secondary);
+        }
+        
+        .btn-icon:hover {
+            background: var(--bg-elevated);
+            border-color: var(--border-light);
+            color: var(--text-primary);
+        }
+        
+        .btn-icon.btn-danger:hover {
+            background: var(--error-bg);
+            border-color: var(--error);
+            color: var(--error);
+        }
+        
+        .btn-icon.btn-edit:hover {
+            background: var(--primary-subtle);
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+        
+        .btn-sm {
+            padding: 8px 14px;
+            font-size: 13px;
+        }
+        
+        .btn-sm svg {
+            width: 16px;
+            height: 16px;
+        }
+        
+        /* ============================================
+           FORM ELEMENTS
+           ============================================ */
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+        
+        .section-header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        
+        .form-input,
+        .form-select {
+            height: 44px;
+            padding: 0 16px;
+            background: var(--bg-input);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-md);
+            color: var(--text-primary);
+            font-size: 14px;
+            font-family: inherit;
+            transition: all var(--transition-fast);
+            min-width: 200px;
+        }
+        
+        .form-input:focus,
+        .form-select:focus {
+            outline: none;
+            border-color: var(--gold);
+            box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.15);
+        }
+        
+        .form-input::placeholder {
+            color: var(--text-disabled);
+        }
+        
+        .form-select {
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%2371717A' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            padding-right: 40px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+        
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+        }
+        
+        .form-hint {
+            display: block;
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 6px;
+        }
+        
+        /* ============================================
+           EMPTY STATE & LOADING
+           ============================================ */
+        .empty-state {
+            text-align: center;
+            padding: 48px 24px;
+            color: var(--text-muted);
+        }
+        
+        .empty-state svg {
+            width: 48px;
+            height: 48px;
+            margin-bottom: 16px;
+            opacity: 0.4;
+        }
+        
+        .empty-state p {
+            font-size: 14px;
+        }
+        
+        .skeleton {
+            background: linear-gradient(90deg, var(--bg-elevated) 25%, var(--bg-card) 50%, var(--bg-elevated) 75%);
+            background-size: 200% 100%;
+            animation: skeleton-loading 1.5s infinite;
+            border-radius: var(--radius-sm);
+        }
+        
+        .skeleton-text {
+            height: 16px;
+            width: 80%;
+            margin: 8px auto;
+        }
+        
+        @keyframes skeleton-loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        
+        /* ============================================
+           RECENT ITEMS LIST
+           ============================================ */
+        .recent-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .recent-item {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 14px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            transition: all var(--transition-fast);
+        }
+        
+        .recent-item:hover {
+            border-color: var(--border-light);
+        }
+        
+        .recent-item-icon {
+            width: 44px;
+            height: 44px;
+            background: var(--primary-subtle);
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        
+        .recent-item-icon svg {
+            width: 22px;
+            height: 22px;
+            color: var(--primary);
+        }
+        
+        .recent-item-info {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .recent-item-info h4 {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .recent-item-info span {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+        
+        /* Subscription Overview */
+        .sub-overview {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+        
+        .sub-overview-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 16px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+        }
+        
+        .sub-overview-label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+        
+        .sub-overview-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+        
+        .sub-overview-dot.premium {
+            background: var(--gold);
+            box-shadow: 0 0 8px rgba(245, 158, 11, 0.5);
+        }
+        
+        .sub-overview-dot.pro {
+            background: var(--primary);
+            box-shadow: 0 0 8px rgba(99, 102, 241, 0.5);
+        }
+        
+        .sub-overview-dot.free {
+            background: var(--text-muted);
+        }
+        
+        .sub-overview-value {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+        
+        /* ============================================
+           MODALS
+           ============================================ */
+        .modal {
+            position: fixed;
+            inset: 0;
+            z-index: 1000;
+            display: none;
+        }
+        
+        .modal.active,
+        .modal.modal-visible {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(6px);
+            animation: fadeIn 0.2s ease;
+        }
+        
+        .modal-container {
+            position: relative;
+            width: 90%;
+            max-width: 520px;
+            max-height: 90vh;
+            background: var(--bg-card);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-lg);
+            overflow: hidden;
+            animation: modalIn 0.3s ease;
+        }
+        
+        .modal-medium {
+            max-width: 600px;
+        }
+        
+        .modal-small {
+            max-width: 440px;
+        }
+        
+        @keyframes modalIn {
+            from { opacity: 0; transform: scale(0.95) translateY(20px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        
+        .modal-header {
+            padding: 24px 28px;
+            border-bottom: 1px solid var(--border-subtle);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--bg-elevated);
+        }
+        
+        .modal-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .modal-title svg {
+            width: 22px;
+            height: 22px;
+            color: var(--gold);
+        }
+        
+        .modal-close {
+            width: 36px;
+            height: 36px;
+            border-radius: var(--radius-md);
+            background: transparent;
+            border: 1px solid var(--border-subtle);
+            color: var(--text-muted);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all var(--transition-fast);
+        }
+        
+        .modal-close:hover {
+            background: var(--error-bg);
+            border-color: var(--error);
+            color: var(--error);
+        }
+        
+        .modal-close svg {
+            width: 18px;
+            height: 18px;
+        }
+        
+        .modal-body {
+            padding: 28px;
+            overflow-y: auto;
+            max-height: calc(90vh - 160px);
+        }
+        
+        .modal-body .form-input,
+        .modal-body .form-select {
+            width: 100%;
+        }
+        
+        .modal-footer {
+            padding: 20px 28px;
+            border-top: 1px solid var(--border-subtle);
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            background: var(--bg-elevated);
+        }
+        
+        /* ============================================
+           TOAST NOTIFICATIONS
+           ============================================ */
+        .toast-container {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            pointer-events: none;
+        }
+        
+        .toast {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px 20px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-lg);
+            animation: toastIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            pointer-events: auto;
+            max-width: 380px;
+        }
+        
+        @keyframes toastIn {
+            from { opacity: 0; transform: translateX(100%); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        
+        .toast.removing {
+            animation: toastOut 0.3s ease forwards;
+        }
+        
+        @keyframes toastOut {
+            to { opacity: 0; transform: translateX(100%); }
+        }
+        
+        .toast-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        
+        .toast-icon svg {
+            width: 20px;
+            height: 20px;
+        }
+        
+        .toast.success .toast-icon {
+            background: var(--success-bg);
+            color: var(--success);
+        }
+        
+        .toast.error .toast-icon {
+            background: var(--error-bg);
+            color: var(--error);
+        }
+        
+        .toast.warning .toast-icon {
+            background: var(--warning-bg);
+            color: var(--warning);
+        }
+        
+        .toast-content {
+            flex: 1;
+        }
+        
+        .toast-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 2px;
+        }
+        
+        .toast-message {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+        
+        .toast-close {
+            width: 28px;
+            height: 28px;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: var(--radius-sm);
+            transition: all var(--transition-fast);
+        }
+        
+        .toast-close:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-primary);
+        }
+        
+        .toast-close svg {
+            width: 16px;
+            height: 16px;
+        }
+        
+        /* ============================================
+           RESPONSIVE
+           ============================================ */
+        @media (max-width: 1200px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        @media (max-width: 1024px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+            
+            .sidebar.active {
+                transform: translateX(0);
+            }
+            
+            .main-content {
+                margin-left: 0;
+            }
+            
+            .topbar-menu-btn {
+                display: flex;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .page-content {
+                padding: 20px;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .section-header {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .section-header-left {
+                flex-direction: column;
+            }
+            
+            .form-input,
+            .form-select {
+                width: 100%;
+                min-width: auto;
+            }
+            
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .modal-container {
+                width: 95%;
+            }
+            
+            .topbar {
+                padding: 0 16px;
+            }
+            
+            .topbar-title h1 {
+                font-size: 18px;
+            }
+            
+            .toast-container {
+                left: 16px;
+                right: 16px;
+                bottom: 16px;
+            }
+            
+            .toast {
+                max-width: none;
+            }
+        }
+        
+        /* Utility Classes */
+        .text-center { text-align: center; }
+        .mb-4 { margin-bottom: 16px; }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+    <!-- Animated Background -->
+    <div class="animated-bg">
+        <div class="gradient-orb orb-1"></div>
+        <div class="gradient-orb orb-2"></div>
+        <div class="gradient-orb orb-3"></div>
+        <div class="grid-pattern"></div>
+    </div>
+    
+    <div class="app-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-logo">
+                    <span class="sidebar-logo-icon">👑</span>
+                    <span class="sidebar-logo-text">FIXORA</span>
+                </div>
+                <button class="sidebar-toggle" id="sidebar-toggle">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="3" y1="12" x2="21" y2="12"></line>
+                        <line x1="3" y1="6" x2="21" y2="6"></line>
+                        <line x1="3" y1="18" x2="21" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            
+            <div class="sidebar-badge">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                </svg>
+                <span>Super Admin</span>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <span class="sidebar-nav-label">Principal</span>
+                <a href="#dashboard" class="sidebar-link active" data-section="dashboard">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="7" height="9"/>
+                        <rect x="14" y="3" width="7" height="5"/>
+                        <rect x="14" y="12" width="7" height="9"/>
+                        <rect x="3" y="16" width="7" height="5"/>
+                    </svg>
+                    <span>Dashboard</span>
+                </a>
+                
+                <span class="sidebar-nav-label">Gestión</span>
+                <a href="#shops" class="sidebar-link" data-section="shops">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+                        <polyline points="9,22 9,12 15,12 15,22"/>
+                    </svg>
+                    <span>Locales</span>
+                </a>
+                <a href="#users" class="sidebar-link" data-section="users">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+                        <circle cx="9" cy="7" r="4"/>
+                        <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/>
+                    </svg>
+                    <span>Usuarios</span>
+                </a>
+                <a href="#subscriptions" class="sidebar-link" data-section="subscriptions">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
+                        <line x1="1" y1="10" x2="23" y2="10"/>
+                    </svg>
+                    <span>Suscripciones</span>
+                </a>
+                
+                <span class="sidebar-nav-label">Analítica</span>
+                <a href="#stats" class="sidebar-link" data-section="stats">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="20" x2="18" y2="10"/>
+                        <line x1="12" y1="20" x2="12" y2="4"/>
+                        <line x1="6" y1="20" x2="6" y2="14"/>
+                    </svg>
+                    <span>Estadísticas</span>
+                </a>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <div class="sidebar-user">
+                    <div class="sidebar-avatar" id="user-avatar">SA</div>
+                    <div class="sidebar-user-info">
+                        <span class="sidebar-user-name" id="user-name">Superadmin</span>
+                        <span class="sidebar-user-role">Superadministrador</span>
+                    </div>
+                    <button class="sidebar-logout" id="logout-btn" title="Cerrar sesión">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
+                            <polyline points="16 17 21 12 16 7"/>
+                            <line x1="21" y1="12" x2="9" y2="12"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </aside>
+        
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Topbar -->
+            <header class="topbar">
+                <button class="topbar-menu-btn" id="mobile-menu-btn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="3" y1="12" x2="21" y2="12"></line>
+                        <line x1="3" y1="6" x2="21" y2="6"></line>
+                        <line x1="3" y1="18" x2="21" y2="18"></line>
+                    </svg>
+                </button>
+                
+                <div class="topbar-title">
+                    <h1 id="page-title">Dashboard</h1>
+                </div>
+                
+                <div class="topbar-actions">
+                    <div class="platform-badge" id="platform-stats">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+                        </svg>
+                        <span class="count" id="total-shops">0</span>
+                        <span>locales activos</span>
+                    </div>
+                </div>
+            </header>
+            
+            <!-- Page Content -->
+            <div class="page-content">
+                <!-- Dashboard Section -->
+                <section class="page-section active" id="section-dashboard">
+                    <!-- Stats Grid -->
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-card-header">
+                                <div class="stat-card-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+                                    </svg>
+                                </div>
+                                <span class="stat-card-trend up">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
+                                        <polyline points="17 6 23 6 23 12"/>
+                                    </svg>
+                                    +12%
+                                </span>
+                            </div>
+                            <div class="stat-card-value" id="stat-shops">0</div>
+                            <div class="stat-card-label">Locales Activos</div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <div class="stat-card-header">
+                                <div class="stat-card-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+                                        <circle cx="9" cy="7" r="4"/>
+                                        <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/>
+                                    </svg>
+                                </div>
+                                <span class="stat-card-trend up">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
+                                        <polyline points="17 6 23 6 23 12"/>
+                                    </svg>
+                                    +8%
+                                </span>
+                            </div>
+                            <div class="stat-card-value" id="stat-users">0</div>
+                            <div class="stat-card-label">Usuarios Registrados</div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <div class="stat-card-header">
+                                <div class="stat-card-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+                                    </svg>
+                                </div>
+                                <span class="stat-card-trend up">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
+                                        <polyline points="17 6 23 6 23 12"/>
+                                    </svg>
+                                    +24%
+                                </span>
+                            </div>
+                            <div class="stat-card-value" id="stat-repairs">0</div>
+                            <div class="stat-card-label">Reparaciones Totales</div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <div class="stat-card-header">
+                                <div class="stat-card-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <line x1="12" y1="1" x2="12" y2="23"/>
+                                        <path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>
+                                    </svg>
+                                </div>
+                                <span class="stat-card-trend up">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
+                                        <polyline points="17 6 23 6 23 12"/>
+                                    </svg>
+                                    +18%
+                                </span>
+                            </div>
+                            <div class="stat-card-value" id="stat-revenue">$0</div>
+                            <div class="stat-card-label">Ingresos Totales</div>
+                        </div>
+                    </div>
+                    
+                    <div class="grid-2">
+                        <!-- Recent Shops -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="card-title">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+                                    </svg>
+                                    Locales Recientes
+                                </h3>
+                                <a href="#shops" class="btn btn-ghost btn-sm" data-section="shops">Ver todos</a>
+                            </div>
+                            <div class="card-body" id="recent-shops">
+                                <div class="empty-state">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                        <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+                                    </svg>
+                                    <p>Cargando locales...</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Subscription Overview -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="card-title">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
+                                        <line x1="1" y1="10" x2="23" y2="10"/>
+                                    </svg>
+                                    Suscripciones
+                                </h3>
+                            </div>
+                            <div class="card-body" id="subscription-overview">
+                                <div class="empty-state">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                        <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
+                                    </svg>
+                                    <p>Cargando datos...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                
+                <!-- Shops Section -->
+                <section class="page-section" id="section-shops">
+                    <div class="section-header">
+                        <div class="section-header-left">
+                            <input type="search" class="form-input" placeholder="Buscar local..." id="shops-search">
+                        </div>
+                        <button class="btn btn-primary" id="btn-new-shop">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="12" y1="5" x2="12" y2="19"/>
+                                <line x1="5" y1="12" x2="19" y2="12"/>
+                            </svg>
+                            Nuevo Local
+                        </button>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-body p-0">
+                            <div class="table-container">
+                                <table class="data-table" id="shops-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Local</th>
+                                            <th>Plan</th>
+                                            <th>Reparaciones</th>
+                                            <th>Estado</th>
+                                            <th>Creado</th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="shops-tbody">
+                                        <tr>
+                                            <td colspan="6" class="text-center">
+                                                <div class="skeleton skeleton-text"></div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                
+                <!-- Users Section -->
+                <section class="page-section" id="section-users">
+                    <div class="section-header">
+                        <div class="section-header-left">
+                            <input type="search" class="form-input" placeholder="Buscar usuario..." id="users-search">
+                            <select class="form-select" id="users-filter-role">
+                                <option value="">Todos los roles</option>
+                                <option value="superadmin">Superadmin</option>
+                                <option value="admin">Admin</option>
+                                <option value="tech">Técnico</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-primary" id="btn-new-user">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="12" y1="5" x2="12" y2="19"/>
+                                <line x1="5" y1="12" x2="19" y2="12"/>
+                            </svg>
+                            Nuevo Usuario
+                        </button>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-body p-0">
+                            <div class="table-container">
+                                <table class="data-table" id="users-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Usuario</th>
+                                            <th>Email</th>
+                                            <th>Rol</th>
+                                            <th>Local</th>
+                                            <th>Estado</th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="users-tbody">
+                                        <tr>
+                                            <td colspan="6" class="text-center">
+                                                <div class="skeleton skeleton-text"></div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                
+                <!-- Subscriptions Section -->
+                <section class="page-section" id="section-subscriptions">
+                    <div class="section-header">
+                        <div class="section-header-left">
+                            <select class="form-select" id="subs-filter-plan">
+                                <option value="">Todos los planes</option>
+                                <option value="free">Free</option>
+                                <option value="pro">Pro</option>
+                                <option value="premium">Premium</option>
+                            </select>
+                            <select class="form-select" id="subs-filter-status">
+                                <option value="">Todos los estados</option>
+                                <option value="active">Activo</option>
+                                <option value="trial">Prueba</option>
+                                <option value="expired">Vencido</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-body p-0">
+                            <div class="table-container">
+                                <table class="data-table" id="subscriptions-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Local</th>
+                                            <th>Plan</th>
+                                            <th>Estado</th>
+                                            <th>Inicio</th>
+                                            <th>Vencimiento</th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="subscriptions-tbody">
+                                        <tr>
+                                            <td colspan="6" class="text-center">
+                                                <div class="skeleton skeleton-text"></div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                
+                <!-- Stats Section -->
+                <section class="page-section" id="section-stats">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-card-header">
+                                <div class="stat-card-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                                        <line x1="16" y1="2" x2="16" y2="6"/>
+                                        <line x1="8" y1="2" x2="8" y2="6"/>
+                                        <line x1="3" y1="10" x2="21" y2="10"/>
+                                    </svg>
+                                </div>
+                            </div>
+                            <div class="stat-card-value" id="stat-repairs-month">0</div>
+                            <div class="stat-card-label">Reparaciones este mes</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-card-header">
+                                <div class="stat-card-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                                        <polyline points="22 4 12 14.01 9 11.01"/>
+                                    </svg>
+                                </div>
+                            </div>
+                            <div class="stat-card-value" id="stat-repairs-delivered">0</div>
+                            <div class="stat-card-label">Entregadas</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-card-header">
+                                <div class="stat-card-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="10"/>
+                                        <polyline points="12 6 12 12 16 14"/>
+                                    </svg>
+                                </div>
+                            </div>
+                            <div class="stat-card-value" id="stat-repairs-pending">0</div>
+                            <div class="stat-card-label">Pendientes</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-card-header">
+                                <div class="stat-card-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
+                                        <polyline points="17 6 23 6 23 12"/>
+                                    </svg>
+                                </div>
+                            </div>
+                            <div class="stat-card-value" id="stat-avg-time">-</div>
+                            <div class="stat-card-label">Tiempo promedio</div>
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="18" y1="20" x2="18" y2="10"/>
+                                    <line x1="12" y1="20" x2="12" y2="4"/>
+                                    <line x1="6" y1="20" x2="6" y2="14"/>
+                                </svg>
+                                Estadísticas por Local
+                            </h3>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-container">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Local</th>
+                                            <th>Reparaciones</th>
+                                            <th>Entregadas</th>
+                                            <th>Pendientes</th>
+                                            <th>Ingresos</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="stats-tbody">
+                                        <tr>
+                                            <td colspan="5" class="text-center">
+                                                <div class="skeleton skeleton-text"></div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+    
+    <!-- New Shop Modal -->
+    <div class="modal" id="shop-modal" data-modal="shop-modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-container modal-medium">
+            <div class="modal-header">
+                <h2 class="modal-title" id="shop-modal-title">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+                    </svg>
+                    Nuevo Local
+                </h2>
+                <button class="modal-close" data-modal-close>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 6L6 18M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            <form id="shop-form">
+                <div class="modal-body">
+                    <input type="hidden" name="id" id="shop-id">
+                    
+                    <div class="form-group">
+                        <label class="form-label">Nombre del local *</label>
+                        <input type="text" name="name" class="form-input" required placeholder="Ej: TechFix Centro">
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Teléfono</label>
+                            <input type="tel" name="phone" class="form-input" placeholder="+1 234 567 8900">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Email</label>
+                            <input type="email" name="email" class="form-input" placeholder="contacto@local.com">
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Dirección</label>
+                        <input type="text" name="address" class="form-input" placeholder="Calle, número, ciudad">
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Plan</label>
+                            <select name="subscription_plan" class="form-select">
+                                <option value="free">Free</option>
+                                <option value="pro">Pro</option>
+                                <option value="premium">Premium</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Estado</label>
+                            <select name="is_active" class="form-select">
+                                <option value="true">Activo</option>
+                                <option value="false">Inactivo</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-modal-close>Cancelar</button>
+                    <button type="submit" class="btn btn-primary" id="shop-submit-btn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/>
+                            <polyline points="17 21 17 13 7 13 7 21"/>
+                            <polyline points="7 3 7 8 15 8"/>
+                        </svg>
+                        Guardar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- User Modal -->
+    <div class="modal" id="user-modal" data-modal="user-modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-container modal-medium">
+            <div class="modal-header">
+                <h2 class="modal-title" id="user-modal-title">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+                        <circle cx="8.5" cy="7" r="4"/>
+                        <line x1="20" y1="8" x2="20" y2="14"/>
+                        <line x1="23" y1="11" x2="17" y2="11"/>
+                    </svg>
+                    Nuevo Usuario
+                </h2>
+                <button class="modal-close" data-modal-close>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 6L6 18M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            <form id="user-form">
+                <div class="modal-body">
+                    <input type="hidden" name="id" id="user-id">
+                    
+                    <div class="form-group">
+                        <label class="form-label">Nombre completo *</label>
+                        <input type="text" name="full_name" class="form-input" required placeholder="Nombre y apellido">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Email *</label>
+                        <input type="email" name="email" class="form-input" required placeholder="usuario@email.com">
+                    </div>
+                    
+                    <div class="form-group" id="password-group">
+                        <label class="form-label">Contraseña *</label>
+                        <input type="password" name="password" class="form-input" minlength="6" placeholder="Mínimo 6 caracteres">
+                        <span class="form-hint">Mínimo 6 caracteres</span>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Rol *</label>
+                            <select name="role" class="form-select" required id="user-role-select">
+                                <option value="admin">Administrador</option>
+                                <option value="tech">Técnico</option>
+                            </select>
+                        </div>
+                        <div class="form-group" id="shop-select-group">
+                            <label class="form-label">Local *</label>
+                            <select name="shop_id" class="form-select" id="user-shop-select">
+                                <option value="">Seleccionar local</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group" id="commission-group" style="display: none;">
+                        <label class="form-label">Comisión (%)</label>
+                        <input type="number" name="commission_rate" class="form-input" min="0" max="100" step="0.5" value="10" placeholder="10">
+                        <span class="form-hint">Porcentaje de comisión por reparación</span>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-modal-close>Cancelar</button>
+                    <button type="submit" class="btn btn-primary" id="user-submit-btn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+                            <circle cx="8.5" cy="7" r="4"/>
+                            <line x1="20" y1="8" x2="20" y2="14"/>
+                            <line x1="23" y1="11" x2="17" y2="11"/>
+                        </svg>
+                        Crear Usuario
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Subscription Modal -->
+    <div class="modal" id="subscription-modal" data-modal="subscription-modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-container modal-small">
+            <div class="modal-header">
+                <h2 class="modal-title">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
+                        <line x1="1" y1="10" x2="23" y2="10"/>
+                    </svg>
+                    Cambiar Plan
+                </h2>
+                <button class="modal-close" data-modal-close>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 6L6 18M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            <form id="subscription-form">
+                <div class="modal-body">
+                    <input type="hidden" name="shop_id" id="sub-shop-id">
+                    
+                    <p class="mb-4" id="sub-shop-name" style="color: var(--text-secondary); font-size: 14px;">Local: -</p>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Plan</label>
+                        <select name="plan" class="form-select" id="sub-plan-select">
+                            <option value="free">Free</option>
+                            <option value="pro">Pro</option>
+                            <option value="premium">Premium</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Estado</label>
+                        <select name="status" class="form-select" id="sub-status-select">
+                            <option value="active">Activo</option>
+                            <option value="trial">Prueba</option>
+                            <option value="expired">Vencido</option>
+                            <option value="cancelled">Cancelado</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Días de vigencia</label>
+                        <input type="number" name="days" class="form-input" value="30" min="1" placeholder="30">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-modal-close>Cancelar</button>
+                    <button type="submit" class="btn btn-primary">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/>
+                            <polyline points="17 21 17 13 7 13 7 21"/>
+                        </svg>
+                        Actualizar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Toast Container -->
+    <div class="toast-container" id="toast-container" aria-live="polite"></div>
+    
+    <script>
+        // Sidebar toggle
+        const sidebar = document.getElementById('sidebar');
+        const sidebarToggle = document.getElementById('sidebar-toggle');
+        const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+        
+        sidebarToggle?.addEventListener('click', () => {
+            sidebar.classList.toggle('collapsed');
+        });
+        
+        mobileMenuBtn?.addEventListener('click', () => {
+            sidebar.classList.toggle('active');
+        });
+        
+        // Close sidebar on overlay click (mobile)
+        document.addEventListener('click', (e) => {
+            if (window.innerWidth <= 1024) {
+                if (!sidebar.contains(e.target) && !mobileMenuBtn.contains(e.target)) {
+                    sidebar.classList.remove('active');
+                }
+            }
+        });
+        
+        // Navigation
+        const navLinks = document.querySelectorAll('.sidebar-link');
+        const sections = document.querySelectorAll('.page-section');
+        const pageTitle = document.getElementById('page-title');
+        
+        const sectionTitles = {
+            dashboard: 'Dashboard',
+            shops: 'Locales',
+            users: 'Usuarios',
+            subscriptions: 'Suscripciones',
+            stats: 'Estadísticas'
+        };
+        
+        navLinks.forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const section = link.dataset.section;
+                
+                // Update active link
+                navLinks.forEach(l => l.classList.remove('active'));
+                link.classList.add('active');
+                
+                // Show section
+                sections.forEach(s => s.classList.remove('active'));
+                document.getElementById(`section-${section}`)?.classList.add('active');
+                
+                // Update title
+                pageTitle.textContent = sectionTitles[section] || section;
+                
+                // Close mobile sidebar
+                if (window.innerWidth <= 1024) {
+                    sidebar.classList.remove('active');
+                }
+            });
+        });
+        
+        // Modal functionality
+        const modals = document.querySelectorAll('.modal');
+        
+        function openModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if (modal) {
+                modal.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            }
+        }
+        
+        function closeModal(modal) {
+            modal.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+        
+        document.addEventListener('click', (e) => {
+            // Close button
+            if (e.target.closest('[data-modal-close]')) {
+                const modal = e.target.closest('.modal');
+                if (modal) closeModal(modal);
+            }
+            
+            // Overlay click
+            if (e.target.classList.contains('modal-overlay')) {
+                const modal = e.target.closest('.modal');
+                if (modal) closeModal(modal);
+            }
+        });
+        
+        // Escape key to close modal
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                modals.forEach(modal => {
+                    if (modal.classList.contains('active')) {
+                        closeModal(modal);
+                    }
+                });
+            }
+        });
+        
+        // Button triggers
+        document.getElementById('btn-new-shop')?.addEventListener('click', () => {
+            document.getElementById('shop-modal-title').innerHTML = `
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+                </svg>
+                Nuevo Local
+            `;
+            document.getElementById('shop-form').reset();
+            document.getElementById('shop-id').value = '';
+            openModal('shop-modal');
+        });
+        
+        document.getElementById('btn-new-user')?.addEventListener('click', () => {
+            document.getElementById('user-modal-title').innerHTML = `
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+                    <circle cx="8.5" cy="7" r="4"/>
+                    <line x1="20" y1="8" x2="20" y2="14"/>
+                    <line x1="23" y1="11" x2="17" y2="11"/>
+                </svg>
+                Nuevo Usuario
+            `;
+            document.getElementById('user-form').reset();
+            document.getElementById('user-id').value = '';
+            document.getElementById('password-group').style.display = 'block';
+            openModal('user-modal');
+        });
+        
+        // Show commission field for tech role
+        document.getElementById('user-role-select')?.addEventListener('change', (e) => {
+            const commissionGroup = document.getElementById('commission-group');
+            if (e.target.value === 'tech') {
+                commissionGroup.style.display = 'block';
+            } else {
+                commissionGroup.style.display = 'none';
+            }
+        });
+    </script>
+    
+    <!-- Supabase CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <script type="module" src="src/js/pages/superadmin.js"></script>
+</body>
+</html>
