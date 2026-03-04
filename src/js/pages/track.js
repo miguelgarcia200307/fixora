@@ -24,6 +24,27 @@ let lastStageSignature = '';
 
 const TRACKING_POLL_MS = 20000;
 
+/**
+ * Helper: Get public URL for logo from Supabase Storage
+ */
+function getLogoUrl(logoPath) {
+    if (!logoPath) return '';
+    
+    // If it's already a full URL, return it
+    if (logoPath.startsWith('http://') || logoPath.startsWith('https://')) {
+        return logoPath;
+    }
+    
+    const supabase = getSupabase();
+    if (!supabase) return logoPath;
+    
+    const { data } = supabase.storage
+        .from(CONFIG.STORAGE_BUCKETS.SHOP_LOGOS)
+        .getPublicUrl(logoPath);
+    
+    return data?.publicUrl || logoPath;
+}
+
 // Status order for progress bar
 const STATUS_ORDER = ['pending', 'assigned', 'in_progress', 'ready', 'delivered'];
 const STATUS_MESSAGES = {
@@ -113,7 +134,7 @@ async function loadByToken(token) {
         // Fetch related data
         const [clientRes, shopRes, techRes] = await Promise.all([
             repair.client_id ? supabase.from('clients').select('name, phone').eq('id', repair.client_id).single() : { data: null },
-            repair.shop_id ? supabase.from('shops').select('name, phone, email, address, whatsapp').eq('id', repair.shop_id).single() : { data: null },
+            repair.shop_id ? supabase.from('shops').select('name, phone, email, address, whatsapp, logo_url, google_maps_url').eq('id', repair.shop_id).single() : { data: null },
             repair.tech_id ? supabase.from('profiles').select('full_name').eq('id', repair.tech_id).single() : { data: null }
         ]);
         
@@ -166,7 +187,7 @@ async function searchRepair(code) {
         // Fetch related data
         const [clientRes, shopRes, techRes] = await Promise.all([
             repair.client_id ? supabase.from('clients').select('name, phone').eq('id', repair.client_id).single() : { data: null },
-            repair.shop_id ? supabase.from('shops').select('name, phone, email, address, whatsapp').eq('id', repair.shop_id).single() : { data: null },
+            repair.shop_id ? supabase.from('shops').select('name, phone, email, address, whatsapp, logo_url, google_maps_url').eq('id', repair.shop_id).single() : { data: null },
             repair.tech_id ? supabase.from('profiles').select('full_name').eq('id', repair.tech_id).single() : { data: null }
         ]);
         
@@ -264,9 +285,23 @@ async function displayRepair(repair) {
     `;
     
     // Shop info
+    const shopLogoSection = $('#shop-logo-section');
     const shopInfo = $('#shop-info');
     const shopContact = $('#shop-contact');
     if (currentShop) {
+        // Logo
+        if (currentShop.logo_url) {
+            const logoUrl = getLogoUrl(currentShop.logo_url);
+            shopLogoSection.innerHTML = `
+                <div class="shop-logo-container">
+                    <img src="${logoUrl}" alt="${currentShop.name}" class="shop-logo">
+                </div>
+            `;
+        } else {
+            shopLogoSection.innerHTML = '';
+        }
+        
+        // Shop information
         shopInfo.innerHTML = `
             <div class="info-item">
                 <label>Local</label>
@@ -314,8 +349,20 @@ async function displayRepair(repair) {
                 </a>
             `;
         }
+        if (currentShop.google_maps_url) {
+            contactHtml += `
+                <a href="${currentShop.google_maps_url}" target="_blank" rel="noopener noreferrer">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                        <circle cx="12" cy="10" r="3"/>
+                    </svg>
+                    <span>Ver en Maps</span>
+                </a>
+            `;
+        }
         shopContact.innerHTML = contactHtml;
     } else {
+        shopLogoSection.innerHTML = '';
         shopInfo.innerHTML = '<div class="info-item"><label>Info</label><span>Información no disponible</span></div>';
         shopContact.innerHTML = '';
     }

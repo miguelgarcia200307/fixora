@@ -1101,11 +1101,105 @@
             gap: 16px;
         }
         
+        .form-section-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 24px 0 16px 0;
+            padding-bottom: 8px;
+            border-bottom: 2px solid var(--border-subtle);
+        }
+        
+        .form-section-title svg {
+            width: 18px;
+            height: 18px;
+            color: var(--primary);
+        }
+        
+        .form-section-title:first-child {
+            margin-top: 0;
+        }
+        
+        .phone-input-group {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        
+        .phone-input-group .form-select {
+            background-position: right 8px center;
+            padding-right: 32px;
+        }
+        
+        .form-help {
+            display: block;
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 6px;
+            font-style: italic;
+        }
+        
         .form-hint {
             display: block;
             font-size: 12px;
             color: var(--text-muted);
             margin-top: 6px;
+        }
+        
+        .logo-upload-container {
+            display: flex;
+            gap: 16px;
+            align-items: flex-start;
+        }
+        
+        .logo-preview {
+            width: 120px;
+            height: 120px;
+            border: 2px dashed var(--border-light);
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-elevated);
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+        
+        .logo-preview svg {
+            width: 48px;
+            height: 48px;
+            color: var(--text-muted);
+            opacity: 0.3;
+        }
+        
+        .logo-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            padding: 8px;
+        }
+        
+        .logo-upload-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            flex: 1;
+        }
+        
+        .form-input-file {
+            display: none;
+        }
+        
+        .btn-sm {
+            padding: 8px 16px;
+            font-size: 13px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
         }
         
         /* ============================================
@@ -2084,31 +2178,173 @@
                 <div class="modal-body">
                     <input type="hidden" name="id" id="shop-id">
                     
+                    <!-- Información Básica -->
+                    <div class="form-section-title">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+                        </svg>
+                        Información Básica
+                    </div>
+                    
                     <div class="form-group">
                         <label class="form-label">Nombre del local *</label>
-                        <input type="text" name="name" class="form-input" required placeholder="Ej: TechFix Centro">
+                        <input type="text" name="name" id="shop-name" class="form-input" required placeholder="Ej: TechFix Centro">
                     </div>
                     
                     <div class="form-row">
                         <div class="form-group">
-                            <label class="form-label">Teléfono</label>
-                            <input type="tel" name="phone" class="form-input" placeholder="+1 234 567 8900">
+                            <label class="form-label">Email</label>
+                            <input type="email" name="email" id="shop-email" class="form-input" placeholder="contacto@local.com">
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Email</label>
-                            <input type="email" name="email" class="form-input" placeholder="contacto@local.com">
+                            <label class="form-label">WhatsApp</label>
+                            <input type="tel" name="whatsapp" id="shop-whatsapp" class="form-input" placeholder="3001234567">
+                        </div>
+                    </div>
+                    
+                    <!-- Teléfono con código de país -->
+                    <div class="form-group">
+                        <label class="form-label">Teléfono de contacto</label>
+                        <div class="phone-input-group">
+                            <select name="country_code" id="shop-country-code" class="form-select" style="flex: 0 0 140px;">
+                                <option value="+1" data-country="United States">🇺🇸 +1</option>
+                                <option value="+52" data-country="Mexico">🇲🇽 +52</option>
+                                <option value="+57" data-country="Colombia">🇨🇴 +57</option>
+                                <option value="+58" data-country="Venezuela">🇻🇪 +58</option>
+                                <option value="+54" data-country="Argentina">🇦🇷 +54</option>
+                                <option value="+56" data-country="Chile">🇨🇱 +56</option>
+                                <option value="+51" data-country="Peru">🇵🇪 +51</option>
+                                <option value="+593" data-country="Ecuador">🇪🇨 +593</option>
+                                <option value="+591" data-country="Bolivia">🇧🇴 +591</option>
+                                <option value="+595" data-country="Paraguay">🇵🇾 +595</option>
+                                <option value="+598" data-country="Uruguay">🇺🇾 +598</option>
+                                <option value="+34" data-country="Spain">🇪🇸 +34</option>
+                                <option value="+44" data-country="United Kingdom">🇬🇧 +44</option>
+                            </select>
+                            <input type="tel" name="phone" id="shop-phone" class="form-input" placeholder="3001234567" style="flex: 1;">
+                        </div>
+                    </div>
+                    
+                    <!-- Ubicación -->
+                    <div class="form-section-title">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/>
+                            <circle cx="12" cy="10" r="3"/>
+                        </svg>
+                        Ubicación
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">País *</label>
+                            <select name="country" id="shop-country" class="form-select" required>
+                                <option value="">Seleccionar país</option>
+                                <option value="United States">🇺🇸 Estados Unidos</option>
+                                <option value="Mexico">🇲🇽 México</option>
+                                <option value="Colombia">🇨🇴 Colombia</option>
+                                <option value="Venezuela">🇻🇪 Venezuela</option>
+                                <option value="Argentina">🇦🇷 Argentina</option>
+                                <option value="Chile">🇨🇱 Chile</option>
+                                <option value="Peru">🇵🇪 Perú</option>
+                                <option value="Ecuador">🇪🇨 Ecuador</option>
+                                <option value="Bolivia">🇧🇴 Bolivia</option>
+                                <option value="Paraguay">🇵🇾 Paraguay</option>
+                                <option value="Uruguay">🇺🇾 Uruguay</option>
+                                <option value="Spain">🇪🇸 España</option>
+                                <option value="United Kingdom">🇬🇧 Reino Unido</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Departamento / Estado</label>
+                            <input type="text" name="state" id="shop-state" class="form-input" placeholder="Ej: Antioquia, California">
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Ciudad *</label>
+                            <input type="text" name="city" id="shop-city" class="form-input" required placeholder="Ej: Medellín, Miami">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Barrio / Sector</label>
+                            <input type="text" name="neighborhood" id="shop-neighborhood" class="form-input" placeholder="Ej: El Poblado, Centro">
                         </div>
                     </div>
                     
                     <div class="form-group">
-                        <label class="form-label">Dirección</label>
-                        <input type="text" name="address" class="form-input" placeholder="Calle, número, ciudad">
+                        <label class="form-label">Dirección detallada</label>
+                        <input type="text" name="address" id="shop-address" class="form-input" placeholder="Calle 10 # 20-30, Local 5">
+                        <small class="form-help">Calle, número, local o punto de referencia</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px; display: inline-block; vertical-align: middle; margin-right: 4px;">
+                                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/>
+                                <circle cx="12" cy="10" r="3"/>
+                            </svg>
+                            Enlace Google Maps (opcional)
+                        </label>
+                        <input type="url" name="google_maps_url" id="shop-maps-url" class="form-input" placeholder="https://maps.app.goo.gl/...">
+                        <small class="form-help">Desde Google Maps: Compartir → Copiar enlace</small>
+                    </div>
+                    
+                    <!-- Logo del Local -->
+                    <div class="form-section-title">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                            <circle cx="8.5" cy="8.5" r="1.5"/>
+                            <polyline points="21 15 16 10 5 21"/>
+                        </svg>
+                        Imagen de Marca
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Logo del local</label>
+                        <div class="logo-upload-container">
+                            <div class="logo-preview" id="shop-logo-preview">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="shop-logo-placeholder">
+                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                                    <circle cx="8.5" cy="8.5" r="1.5"/>
+                                    <polyline points="21 15 16 10 5 21"/>
+                                </svg>
+                                <img id="shop-logo-img" alt="Logo preview" style="display: none;">
+                            </div>
+                            <div class="logo-upload-controls">
+                                <input type="file" name="logo" id="shop-logo-input" class="form-input-file" accept="image/png,image/jpeg,image/jpg,image/webp">
+                                <label for="shop-logo-input" class="btn btn-secondary btn-sm">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 18px; height: 18px;">
+                                        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                                        <polyline points="17 8 12 3 7 8"/>
+                                        <line x1="12" y1="3" x2="12" y2="15"/>
+                                    </svg>
+                                    Seleccionar imagen
+                                </label>
+                                <button type="button" class="btn btn-secondary btn-sm" id="shop-logo-remove" style="display: none;">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 18px; height: 18px;">
+                                        <line x1="18" y1="6" x2="6" y2="18"/>
+                                        <line x1="6" y1="6" x2="18" y2="18"/>
+                                    </svg>
+                                    Eliminar
+                                </button>
+                            </div>
+                        </div>
+                        <small class="form-help">Imagen cuadrada recomendada. Máximo 2MB. Formatos: PNG, JPG, WEBP</small>
+                    </div>
+                    
+                    <!-- Configuración -->
+                    <div class="form-section-title">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="3"/>
+                            <path d="M12 1v6m0 6v6m5.2-13.2l-4.2 4.2m-2 2l-4.2 4.2M23 12h-6m-6 0H5m13.2 5.2l-4.2-4.2m-2-2l-4.2-4.2"/>
+                        </svg>
+                        Configuración
                     </div>
                     
                     <div class="form-row">
                         <div class="form-group">
                             <label class="form-label">Plan</label>
-                            <select name="subscription_plan" class="form-select">
+                            <select name="subscription_plan" id="shop-plan" class="form-select">
                                 <option value="free">Free</option>
                                 <option value="pro">Pro</option>
                                 <option value="premium">Premium</option>
@@ -2116,7 +2352,7 @@
                         </div>
                         <div class="form-group">
                             <label class="form-label">Estado</label>
-                            <select name="is_active" class="form-select">
+                            <select name="is_active" id="shop-active" class="form-select">
                                 <option value="true">Activo</option>
                                 <option value="false">Inactivo</option>
                             </select>

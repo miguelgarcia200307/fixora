@@ -97,14 +97,20 @@ export async function getShopBySlug(slug) {
 export async function createShop(shopData) {
     const {
         name,
+        country,
+        state,
         city,
+        neighborhood,
         address,
         phone,
         whatsapp,
         email,
+        country_code,
+        google_maps_url,
         logo_url,
         default_tech_commission = 30,
-        subscription_plan = 'free'
+        subscription_plan = 'free',
+        is_active = true
     } = shopData;
 
     // Generate slug from name
@@ -113,18 +119,23 @@ export async function createShop(shopData) {
     const shop = {
         name,
         slug,
+        country,
+        state,
         city,
+        neighborhood,
         address,
         phone,
         whatsapp: whatsapp || phone,
         email,
+        country_code,
+        google_maps_url,
         logo_url,
         default_tech_commission,
         subscription_plan,
         subscription_status: 'trial',
         subscription_start_date: new Date().toISOString(),
         subscription_end_date: getTrialEndDate(),
-        is_active: true
+        is_active
     };
 
     return insert('shops', shop, { select: '*', single: true });

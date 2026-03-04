@@ -19,7 +19,7 @@ import {
     getRepairStats,
     updateClient
 } from '../services/repairService.js';
-import { uploadIntakeEvidence, getIntakeEvidence } from '../services/storageService.js';
+import { uploadIntakeEvidence, getIntakeEvidence, uploadShopLogo } from '../services/storageService.js';
 import { sendToClientFromAdmin, sendToTechnician } from '../services/whatsappService.js';
 import { getSupabase } from '../services/supabaseService.js';
 import { 
@@ -3571,14 +3571,55 @@ function loadSettings() {
     
     $('#settings-shop-name').value = shop.name || '';
     $('#settings-shop-phone').value = shop.phone || '';
+    $('#settings-shop-whatsapp').value = shop.whatsapp || '';
     $('#settings-shop-email').value = shop.email || '';
     $('#settings-shop-address').value = shop.address || '';
+    $('#settings-commission').value = shop.default_tech_commission || '';
     
     $('#settings-plan').textContent = shop.subscription_plan?.toUpperCase() || 'FREE';
     
     const limits = CONFIG.SUBSCRIPTION_PLANS.find(p => p.id === shop.subscription_plan) || CONFIG.SUBSCRIPTION_PLANS[0];
     $('#settings-repair-limit').textContent = limits.maxRepairs === -1 ? 'Ilimitado' : `${limits.maxRepairs}/mes`;
     $('#settings-tech-limit').textContent = limits.maxTechs === -1 ? 'Ilimitado' : limits.maxTechs;
+    
+    // Load shop logo
+    const logoImg = $('#settings-logo-img');
+    const logoPlaceholder = $('#settings-logo-placeholder');
+    const logoRemoveBtn = $('#settings-logo-remove');
+    const logoInput = $('#settings-logo-input');
+    
+    if (logoImg && logoPlaceholder) {
+        // Handle image load success
+        logoImg.onload = function() {
+            this.style.display = 'block';
+            logoPlaceholder.style.display = 'none';
+            if (logoRemoveBtn) logoRemoveBtn.style.display = 'inline-flex';
+        };
+        
+        // Handle image load errors
+        logoImg.onerror = function() {
+            console.error('Error loading logo. Please check if the storage bucket is configured correctly.');
+            this.style.display = 'none';
+            logoPlaceholder.style.display = 'block';
+            if (logoRemoveBtn) logoRemoveBtn.style.display = 'none';
+        };
+        
+        if (shop.logo_url && shop.logo_url.trim() !== '') {
+            // Clear any previous src first
+            logoImg.src = '';
+            // Set new src
+            setTimeout(() => {
+                logoImg.src = shop.logo_url;
+            }, 0);
+            if (logoInput) logoInput.dataset.remove = 'false';
+        } else {
+            logoImg.src = '';
+            logoImg.style.display = 'none';
+            logoPlaceholder.style.display = 'block';
+            if (logoRemoveBtn) logoRemoveBtn.style.display = 'none';
+            if (logoInput) logoInput.dataset.remove = 'false';
+        }
+    }
 }
 
 /**
@@ -3782,6 +3823,18 @@ function setupEventListeners() {
     
     // Settings form
     $('#shop-settings-form')?.addEventListener('submit', handleSettingsSubmit);
+    
+    // Logo upload handlers
+    const logoInput = $('#settings-logo-input');
+    const logoRemoveBtn = $('#settings-logo-remove');
+    
+    if (logoInput) {
+        logoInput.addEventListener('change', handleLogoChange);
+    }
+    
+    if (logoRemoveBtn) {
+        logoRemoveBtn.addEventListener('click', handleLogoRemove);
+    }
     
     // Finance section event listeners
     setupFinanceEventListeners();
@@ -5760,19 +5813,97 @@ async function handleSettingsSubmit(e) {
         const data = {
             name: $('#settings-shop-name').value.trim(),
             phone: $('#settings-shop-phone').value.trim() || null,
+            whatsapp: $('#settings-shop-whatsapp').value.trim() || null,
             email: $('#settings-shop-email').value.trim() || null,
-            address: $('#settings-shop-address').value.trim() || null
+            address: $('#settings-shop-address').value.trim() || null,
+            default_tech_commission: parseFloat($('#settings-commission').value) || null
         };
         
         await updateShop(shopId, data);
         shop = { ...shop, ...data };
+        
+        // Handle logo upload or removal
+        const logoInput = $('#settings-logo-input');
+        
+        if (logoInput?.dataset.remove === 'true') {
+            // Remove logo
+            await updateShop(shopId, { logo_url: null });
+            shop.logo_url = null;
+            logoInput.dataset.remove = 'false';
+            toast.success('Configuración guardada y logo eliminado');
+        } else if (logoInput?.files && logoInput.files.length > 0) {
+            // Upload new logo
+            const logoUrl = await uploadShopLogo(shopId, logoInput.files[0]);
+            await updateShop(shopId, { logo_url: logoUrl });
+            shop.logo_url = logoUrl;
+            logoInput.value = ''; // Clear input
+            toast.success('Configuración guardada y logo actualizado');
+        } else {
+            toast.success('Configuración guardada');
+        }
+        
         updateUserInfo();
-        toast.success('Configuración guardada');
         
     } catch (error) {
         console.error('Error saving settings:', error);
         toast.error('Error al guardar');
     }
+}
+
+/**
+ * Handle logo file selection
+ */
+function handleLogoChange(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+        toast.error('Por favor selecciona una imagen válida');
+        e.target.value = '';
+        return;
+    }
+    
+    // Validate file size (2MB max)
+    if (file.size > 2 * 1024 * 1024) {
+        toast.error('La imagen no debe superar 2MB');
+        e.target.value = '';
+        return;
+    }
+    
+    // Preview image
+    const reader = new FileReader();
+    reader.onload = (event) => {
+        const logoImg = $('#settings-logo-img');
+        const logoPlaceholder = $('#settings-logo-placeholder');
+        const logoRemoveBtn = $('#settings-logo-remove');
+        
+        logoImg.src = event.target.result;
+        logoImg.style.display = 'block';
+        logoPlaceholder.style.display = 'none';
+        logoRemoveBtn.style.display = 'inline-flex';
+        e.target.dataset.remove = 'false';
+    };
+    reader.readAsDataURL(file);
+}
+
+/**
+ * Handle logo removal
+ */
+function handleLogoRemove(e) {
+    e.preventDefault();
+    
+    const logoInput = $('#settings-logo-input');
+    const logoImg = $('#settings-logo-img');
+    const logoPlaceholder = $('#settings-logo-placeholder');
+    const logoRemoveBtn = $('#settings-logo-remove');
+    
+    logoInput.value = '';
+    logoInput.dataset.remove = 'true';
+    logoImg.src = '';
+    logoImg.style.display = 'none';
+    logoPlaceholder.style.display = 'block';
+    logoRemoveBtn.style.display = 'none';
 }
 
 // =====================================================

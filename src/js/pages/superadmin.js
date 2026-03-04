@@ -12,6 +12,7 @@ import {
     getShopStats,
     updateShopSubscription 
 } from '../services/shopService.js';
+import { uploadShopLogo } from '../services/storageService.js';
 import { getSupabase, query } from '../services/supabaseService.js';
 import { formatDate, formatCurrency, getInitials, formatRepairStatus } from '../utils/formatters.js';
 import { validateShopForm, showValidationErrors, clearValidationErrors } from '../utils/validators.js';
@@ -670,6 +671,100 @@ function setupEventListeners() {
     // Shop form submit
     $('#shop-form')?.addEventListener('submit', handleShopSubmit);
     
+    // Sync country with country code
+    $('#shop-country')?.addEventListener('change', (e) => {
+        const countrySelect = e.target;
+        const selectedCountry = countrySelect.value;
+        const countryCodeSelect = $('#shop-country-code');
+        
+        // Map countries to country codes
+        const countryToCode = {
+            'United States': '+1',
+            'Mexico': '+52',
+            'Colombia': '+57',
+            'Venezuela': '+58',
+            'Argentina': '+54',
+            'Chile': '+56',
+            'Peru': '+51',
+            'Ecuador': '+593',
+            'Bolivia': '+591',
+            'Paraguay': '+595',
+            'Uruguay': '+598',
+            'Spain': '+34',
+            'United Kingdom': '+44'
+        };
+        
+        if (countryToCode[selectedCountry]) {
+            countryCodeSelect.value = countryToCode[selectedCountry];
+        }
+    });
+    
+    // Sync country code with country
+    $('#shop-country-code')?.addEventListener('change', (e) => {
+        const countryCodeSelect = e.target;
+        const selectedCode = countryCodeSelect.value;
+        const countrySelect = $('#shop-country');
+        
+        // Get country from selected option's data attribute
+        const selectedOption = countryCodeSelect.options[countryCodeSelect.selectedIndex];
+        const country = selectedOption.getAttribute('data-country');
+        
+        if (country && !countrySelect.value) {
+            // Only set if country is not already selected
+            countrySelect.value = country;
+        }
+    });
+    
+    // Logo upload handling
+    const logoInput = $('#shop-logo-input');
+    const logoPreview = $('#shop-logo-preview');
+    const logoImg = $('#shop-logo-img');
+    const logoPlaceholder = $('#shop-logo-placeholder');
+    const logoRemoveBtn = $('#shop-logo-remove');
+    
+    logoInput?.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            // Validate file size (max 2MB)
+            if (file.size > 2 * 1024 * 1024) {
+                toast.error('La imagen no debe superar 2MB');
+                logoInput.value = '';
+                return;
+            }
+            
+            // Validate file type
+            if (!file.type.startsWith('image/')) {
+                toast.error('Solo se permiten archivos de imagen');
+                logoInput.value = '';
+                return;
+            }
+            
+            // Show preview
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                logoImg.src = e.target.result;
+                logoImg.style.display = 'block';
+                logoPlaceholder.style.display = 'none';
+                logoRemoveBtn.style.display = 'inline-flex';
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+    
+    logoRemoveBtn?.addEventListener('click', () => {
+        logoInput.value = '';
+        logoImg.src = '';
+        logoImg.style.display = 'none';
+        logoPlaceholder.style.display = 'block';
+        logoRemoveBtn.style.display = 'none';
+        
+        // Mark for removal if editing existing shop
+        const shopId = $('#shop-id').value;
+        if (shopId) {
+            logoInput.dataset.remove = 'true';
+        }
+    });
+    
     // User form submit
     $('#user-form')?.addEventListener('submit', handleUserSubmit);
     
@@ -766,11 +861,52 @@ function openEditShopModal(shop) {
     $('#shop-id').value = shop.id;
     
     form.elements.name.value = shop.name || '';
-    form.elements.phone.value = shop.phone || '';
     form.elements.email.value = shop.email || '';
+    form.elements.whatsapp.value = shop.whatsapp || '';
+    
+    // Parse phone number to extract country code and number
+    form.elements.country_code.value = shop.country_code || '+1';
+    if (shop.phone) {
+        const countryCode = shop.country_code || '+1';
+        const phoneWithoutCode = shop.phone.startsWith(countryCode) 
+            ? shop.phone.substring(countryCode.length) 
+            : shop.phone;
+        form.elements.phone.value = phoneWithoutCode;
+    } else {
+        form.elements.phone.value = '';
+    }
+    
+    // Location fields
+    form.elements.country.value = shop.country || '';
+    form.elements.state.value = shop.state || '';
+    form.elements.city.value = shop.city || '';
+    form.elements.neighborhood.value = shop.neighborhood || '';
     form.elements.address.value = shop.address || '';
+    form.elements.google_maps_url.value = shop.google_maps_url || '';
+    
+    // Configuration
     form.elements.subscription_plan.value = shop.subscription_plan || 'free';
     form.elements.is_active.value = shop.is_active ? 'true' : 'false';
+    
+    // Logo preview
+    const logoImg = $('#shop-logo-img');
+    const logoPlaceholder = $('#shop-logo-placeholder');
+    const logoRemoveBtn = $('#shop-logo-remove');
+    const logoInput = $('#shop-logo-input');
+    
+    if (shop.logo_url) {
+        logoImg.src = shop.logo_url;
+        logoImg.style.display = 'block';
+        logoPlaceholder.style.display = 'none';
+        logoRemoveBtn.style.display = 'inline-flex';
+    } else {
+        logoImg.src = '';
+        logoImg.style.display = 'none';
+        logoPlaceholder.style.display = 'block';
+        logoRemoveBtn.style.display = 'none';
+    }
+    logoInput.value = '';
+    logoInput.dataset.remove = '';
     
     modal.open('shop-modal');
 }
@@ -820,11 +956,23 @@ async function handleShopSubmit(e) {
     const submitBtn = $('#shop-submit-btn');
     const shopId = $('#shop-id').value;
     
+    // Build phone number with country code
+    const countryCode = form.elements.country_code.value.trim();
+    const phoneNumber = form.elements.phone.value.trim();
+    const fullPhone = phoneNumber ? `${countryCode}${phoneNumber}` : null;
+    
     const data = {
         name: form.elements.name.value.trim(),
-        phone: form.elements.phone.value.trim() || null,
+        phone: fullPhone,
+        whatsapp: form.elements.whatsapp?.value.trim() || null,
         email: form.elements.email.value.trim() || null,
+        country: form.elements.country.value.trim() || null,
+        state: form.elements.state.value.trim() || null,
+        city: form.elements.city.value.trim() || null,
+        neighborhood: form.elements.neighborhood.value.trim() || null,
         address: form.elements.address.value.trim() || null,
+        country_code: countryCode,
+        google_maps_url: form.elements.google_maps_url.value.trim() || null,
         subscription_plan: form.elements.subscription_plan.value,
         is_active: form.elements.is_active.value === 'true'
     };
@@ -839,11 +987,37 @@ async function handleShopSubmit(e) {
     showLoading(submitBtn, { text: 'Guardando...' });
     
     try {
+        let savedShop;
+        
         if (shopId) {
-            await updateShop(shopId, data);
+            // Update existing shop
+            savedShop = await updateShop(shopId, data);
+            
+            // Handle logo upload/removal
+            const logoFile = form.elements.logo.files[0];
+            const shouldRemoveLogo = form.elements.logo.dataset.remove === 'true';
+            
+            if (logoFile) {
+                // Upload new logo
+                const logoUrl = await uploadShopLogo(shopId, logoFile);
+                await updateShop(shopId, { logo_url: logoUrl });
+            } else if (shouldRemoveLogo) {
+                // Remove logo
+                await updateShop(shopId, { logo_url: null });
+            }
+            
             toast.success('Local actualizado');
         } else {
-            await createShop(data);
+            // Create new shop
+            savedShop = await createShop(data);
+            
+            // Upload logo if provided
+            const logoFile = form.elements.logo.files[0];
+            if (logoFile && savedShop?.id) {
+                const logoUrl = await uploadShopLogo(savedShop.id, logoFile);
+                await updateShop(savedShop.id, { logo_url: logoUrl });
+            }
+            
             toast.success('Local creado');
         }
         
@@ -853,7 +1027,7 @@ async function handleShopSubmit(e) {
         
     } catch (error) {
         console.error('Error saving shop:', error);
-        toast.error('Error al guardar el local');
+        toast.error(error.message || 'Error al guardar el local');
     } finally {
         hideLoading(submitBtn);
     }

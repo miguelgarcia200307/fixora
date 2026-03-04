@@ -1662,6 +1662,39 @@
             .shop-info-header h4 { font-size: 20px; letter-spacing: -0.03em; }
         }
         
+        .shop-logo-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            padding: 16px;
+            background: var(--bg-elevated);
+            border-radius: var(--radius-lg);
+            border: 2px solid var(--border-subtle);
+        }
+        
+        @media (min-width: 768px) {
+            .shop-logo-container {
+                margin-bottom: 24px;
+                padding: 20px;
+            }
+        }
+        
+        .shop-logo {
+            max-width: 120px;
+            max-height: 120px;
+            width: 100%;
+            height: auto;
+            object-fit: contain;
+        }
+        
+        @media (min-width: 768px) {
+            .shop-logo {
+                max-width: 150px;
+                max-height: 150px;
+            }
+        }
+        
         .shop-contact {
             display: flex;
             flex-direction: column;
@@ -2209,6 +2242,9 @@
                                 <polyline points="9 22 9 12 15 12 15 22"/>
                             </svg>
                             <h4>Información del Local</h4>
+                        </div>
+                        <div id="shop-logo-section">
+                            <!-- Logo will be inserted here -->
                         </div>
                         <div class="info-grid" id="shop-info">
                             <!-- Dynamic content -->

@@ -186,6 +186,19 @@ export async function sendToClientFromTech(repair, shop, note = '') {
  * Generate completion message for client
  */
 export function generateCompletionMessage(repair, shop) {
+    // Build location string with all available details
+    const locationParts = [];
+    
+    if (shop?.address) locationParts.push(shop.address);
+    if (shop?.neighborhood) locationParts.push(shop.neighborhood);
+    
+    const cityState = [];
+    if (shop?.city) cityState.push(shop.city);
+    if (shop?.state) cityState.push(shop.state);
+    if (cityState.length > 0) locationParts.push(cityState.join(', '));
+    
+    const fullLocation = locationParts.join('\n');
+    
     const message = `\ud83c\udf89 *¡TU EQUIPO ESTÁ LISTO!*
 \u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
 
@@ -202,8 +215,7 @@ export function generateCompletionMessage(repair, shop) {
 
 \u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
 \ud83d\udccd *RECOGER EN*
-${shop?.name || 'Nuestro local'}
-${shop?.address || ''}
+*${shop?.name || 'Nuestro local'}*${fullLocation ? `\n${fullLocation}` : ''}${shop?.google_maps_url ? `\n\n\ud83d\uddfa\ufe0f Ver ubicación:\n${shop.google_maps_url}` : ''}
 
 \ud83d\udcde *Contáctanos*
 ${shop?.phone || shop?.whatsapp || ''}
@@ -295,6 +307,16 @@ export async function sendReadyForPickupNotification(repair, shop) {
     if (!shop) {
         throw new Error('Información del local no disponible');
     }
+    
+    // Debug: verificar si el shop tiene google_maps_url
+    console.log('📍 Shop data para notificación:', {
+        name: shop.name,
+        address: shop.address,
+        neighborhood: shop.neighborhood || '(sin barrio)',
+        city: shop.city,
+        state: shop.state,
+        google_maps_url: shop.google_maps_url || '❌ NO TIENE'
+    });
     
     const message = generateCompletionMessage(repair, shop);
     openWhatsAppChat(repair.client?.whatsapp || repair.client?.phone, message);
