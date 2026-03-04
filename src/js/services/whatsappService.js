@@ -121,6 +121,12 @@ export async function sendToClientFromAdmin(repair, shop) {
     
     const templates = await getShopTemplates(shop.id);
     
+    // Calcular información financiera
+    const hasDeposit = repair.deposit_amount && repair.deposit_amount > 0;
+    const depositInfo = hasDeposit 
+        ? `\n💰 *Abono recibido:* ${formatCurrency(repair.deposit_amount)}\n💳 *Saldo pendiente:* ${formatCurrency(repair.remaining_balance || 0)}`
+        : '';
+    
     const variables = {
         local: shop?.name || 'El taller',
         codigo: repair.code,
@@ -128,6 +134,9 @@ export async function sendToClientFromAdmin(repair, shop) {
         modelo: repair.device_model || '',
         estadoCotizacion: getQuoteStatusLabel(repair.quote_status),
         monto: repair.quote_amount ? formatCurrency(repair.quote_amount) : 'Por definir',
+        abono: hasDeposit ? formatCurrency(repair.deposit_amount) : 'Sin abono',
+        saldoPendiente: hasDeposit ? formatCurrency(repair.remaining_balance || 0) : formatCurrency(repair.quote_amount || 0),
+        depositInfo: depositInfo,
         trackingLink: `${window.location.origin}/track.html?token=${repair.tracking_token}`,
         estado: getRepairStatusLabel(repair.status)
     };
@@ -199,6 +208,25 @@ export function generateCompletionMessage(repair, shop) {
     
     const fullLocation = locationParts.join('\n');
     
+    // Calcular información de pagos
+    const hasDeposit = repair.deposit_amount && repair.deposit_amount > 0;
+    const finalAmount = repair.final_amount || repair.quote_amount || 0;
+    const depositAmount = repair.deposit_amount || 0;
+    const remainingToPay = Math.max(finalAmount - depositAmount, 0);
+    
+    // Construir sección de pago con información de abono
+    let paymentSection = '';
+    if (hasDeposit) {
+        paymentSection = `\ud83d\udcb0 *Información de Pago*
+   Total: ${formatCurrency(finalAmount)}
+   Abono recibido: ${formatCurrency(depositAmount)}
+   \u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
+   \ud83d\udcb3 *A PAGAR AL RECOGER:* ${formatCurrency(remainingToPay)}`;
+    } else {
+        paymentSection = `\ud83d\udcb0 *Total a Pagar*
+   ${finalAmount > 0 ? formatCurrency(finalAmount) : 'Por confirmar'}`;
+    }
+    
     const message = `\ud83c\udf89 *¡TU EQUIPO ESTÁ LISTO!*
 \u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
 
@@ -210,8 +238,7 @@ export function generateCompletionMessage(repair, shop) {
 \ud83d\udcf1 *Equipo Reparado*
    ${repair.device_brand || ''} ${repair.device_model || ''}
 
-\ud83d\udcb0 *Total a Pagar*
-   ${repair.final_amount || repair.quote_amount ? formatCurrency(repair.final_amount || repair.quote_amount) : 'Por confirmar'}
+${paymentSection}
 
 \u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
 \ud83d\udccd *RECOGER EN*

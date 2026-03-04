@@ -736,23 +736,22 @@ async function openRepairWorkModal(repairId) {
                                 <span class="device-info-value" style="font-family: monospace;">${repair.device_imei}</span>
                             </div>
                         ` : ''}
-                    </div>
-                    
-                    ${repair.device_password ? `
-                        <div style="margin-top: 16px;">
-                            <span class="device-info-label">Contraseña del dispositivo</span>
-                            <div class="password-box">
-                                <code id="password-display">••••••••</code>
-                                <button class="btn btn-secondary btn-reveal" id="btn-reveal-password" data-password="${repair.device_password}">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                                        <circle cx="12" cy="12" r="3"/>
-                                    </svg>
-                                    Ver
-                                </button>
+                        ${repair.device_password ? `
+                            <div class="device-info-item" style="grid-column: 1 / -1;">
+                                <span class="device-info-label">🔐 PIN / Contraseña del dispositivo</span>
+                                <div class="password-box" style="margin-top: 8px;">
+                                    <code id="password-display">••••••••</code>
+                                    <button class="btn btn-secondary btn-reveal" id="btn-reveal-password" data-password="${repair.device_password}">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                            <circle cx="12" cy="12" r="3"/>
+                                        </svg>
+                                        Ver
+                                    </button>
+                                </div>
                             </div>
-                        </div>
-                    ` : ''}
+                        ` : ''}
+                    </div>
                     
                     ${repair.device_accessories?.length ? `
                         <div style="margin-top: 16px;">
@@ -1647,6 +1646,8 @@ async function handleStageSubmit(e) {
     
     showLoading(submitBtn, { text: 'Guardando...' });
     
+    let stage = null;
+    
     try {
         const formData = formDataToObject(form);
         
@@ -1659,39 +1660,55 @@ async function handleStageSubmit(e) {
         const stageName = formData.title || stageTypeName;
         
         // Create stage
-        const stage = await addRepairStage({
+        stage = await addRepairStage({
             repair_id: repairId,
             stage_type: stageType,
             stage_name: stageName,
             description: formData.description || null,
-            is_public: formData.is_public === 'on'
+            is_public: formData.is_public === 'on',
+            created_by: userId
         });
         
-        // Upload photos
+        // Upload photos (don't fail if this fails)
         if (stagePhotos.length > 0) {
-            const photoPaths = [];
-            
-            for (const photo of stagePhotos) {
-                const evidence = await uploadStageEvidence(shopId, repairId, stage.id, photo.file);
-                photoPaths.push(evidence.file_url);
+            try {
+                const photoPaths = [];
+                
+                for (const photo of stagePhotos) {
+                    const evidence = await uploadStageEvidence(shopId, repairId, stage.id, photo.file);
+                    photoPaths.push(evidence.file_url);
+                }
+                
+                // Update stage with photo paths
+                await getSupabase()
+                    .from('repair_stages')
+                    .update({ evidence_photos: photoPaths })
+                    .eq('id', stage.id);
+            } catch (photoError) {
+                console.error('Error uploading photos:', photoError);
+                // Don't fail the entire operation, just log it
+                toast.warning('Avance registrado, pero hubo un problema al subir algunas fotos');
             }
-            
-            // Update stage with photo paths
-            await getSupabase()
-                .from('repair_stages')
-                .update({ evidence_photos: photoPaths })
-                .eq('id', stage.id);
         }
         
         toast.success('Avance registrado');
         modal.close('stage-modal');
         
-        // Reopen work modal with updated data
-        setTimeout(() => openRepairWorkModal(repairId), 300);
+        // Reopen work modal with updated data (don't fail if this fails)
+        try {
+            setTimeout(() => openRepairWorkModal(repairId), 300);
+        } catch (modalError) {
+            console.error('Error reopening modal:', modalError);
+        }
         
     } catch (error) {
         console.error('Error creating stage:', error);
-        toast.error('Error al registrar avance');
+        // Only show error if stage creation failed
+        if (!stage) {
+            toast.error('Error al registrar avance');
+        } else {
+            toast.warning('Avance registrado, pero hubo un error al actualizar la vista');
+        }
     } finally {
         hideLoading(submitBtn);
     }

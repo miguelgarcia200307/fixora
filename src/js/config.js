@@ -157,8 +157,8 @@ _Enviado desde {local}_`,
 \ud83d\udcf1 *Equipo Recibido*
    {marca} {modelo}
 
-\ud83d\udcb0 *Estado de Cotización*
-   {estadoCotizacion} - {monto}
+\ud83d\udcb0 *Cotización*
+   {estadoCotizacion} - {monto}{depositInfo}
 
 \u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
 \ud83d\udd0d *RASTREA TU REPARACIÓN EN TIEMPO REAL*

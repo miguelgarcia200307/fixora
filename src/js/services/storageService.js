@@ -385,14 +385,25 @@ export function getEvidenceUrl(path) {
     const client = getSupabase();
     if (!client) return path;
     
-    // Determine bucket based on path
-    const bucket = path.includes('stage-evidence') 
-        ? CONFIG.STORAGE_BUCKETS.STAGE_EVIDENCE 
-        : CONFIG.STORAGE_BUCKETS.INTAKE_EVIDENCE;
+    // Try to determine bucket based on path structure
+    // Expected path format: shopId/repairId/filename or shopId/repairId/stageId/filename
+    let bucket = CONFIG.STORAGE_BUCKETS.STAGE_EVIDENCE;
     
-    const { data } = client.storage
-        .from(bucket)
-        .getPublicUrl(path);
+    // If path contains only 3 segments (shop/repair/file), it's intake evidence
+    // If path contains 4 segments (shop/repair/stage/file), it's stage evidence
+    const pathSegments = path.split('/').filter(s => s);
+    if (pathSegments.length === 3) {
+        bucket = CONFIG.STORAGE_BUCKETS.INTAKE_EVIDENCE;
+    }
     
-    return data?.publicUrl || path;
+    try {
+        const { data } = client.storage
+            .from(bucket)
+            .getPublicUrl(path);
+        
+        return data?.publicUrl || path;
+    } catch (error) {
+        console.error('Error getting public URL:', error);
+        return path;
+    }
 }

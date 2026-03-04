@@ -4098,6 +4098,8 @@ async function submitRepairWizard() {
     const submitBtn = $('#wizard-submit');
     showLoading(submitBtn, { text: 'Creando...' });
     
+    let repair = null;
+    
     try {
         const form = $('#repair-wizard-form');
         const formData = formDataToObject(form);
@@ -4136,34 +4138,54 @@ async function submitRepairWizard() {
             device_accessories: accessories,
             quote_status: formData.quote_status || 'pending',
             quote_amount: formData.quote_amount ? parseFloat(formData.quote_amount) : null,
+            deposit_amount: formData.deposit_amount ? parseFloat(formData.deposit_amount) : null,
             tech_id: formData.technician_id || null,
             priority: parseInt(formData.priority) || 3
         };
         
-        const repair = await createRepair(repairData);
+        repair = await createRepair(repairData);
         
-        // Upload photos
+        // Upload photos (don't fail if this fails)
         if (wizardPhotos.length > 0) {
-            for (const photo of wizardPhotos) {
-                if (photo.file) {
-                    await uploadIntakeEvidence(shopId, repair.id, photo.file);
+            try {
+                for (const photo of wizardPhotos) {
+                    if (photo.file) {
+                        await uploadIntakeEvidence(shopId, repair.id, photo.file);
+                    }
                 }
+            } catch (photoError) {
+                console.error('Error uploading photos:', photoError);
+                // Don't fail the entire operation, just log it
+                toast.warning(`Reparación ${repair.code} creada, pero hubo un problema al subir algunas fotos`);
             }
         }
         
         toast.success(`Reparación ${repair.code || repair.id} creada`);
         modal.close('repair-wizard-modal');
         
-        // Refresh data
-        await loadRepairs();
-        await loadDashboardData();
+        // Refresh data (don't fail if this fails)
+        try {
+            await loadRepairs();
+            await loadDashboardData();
+        } catch (refreshError) {
+            console.error('Error refreshing data:', refreshError);
+        }
         
-        // Open repair panel
-        openRepairPanel(repair.id);
+        // Open repair panel (don't fail if this fails)
+        try {
+            openRepairPanel(repair.id);
+        } catch (panelError) {
+            console.error('Error opening panel:', panelError);
+        }
         
     } catch (error) {
         console.error('Error creating repair:', error);
-        toast.error('Error al crear la reparación');
+        // Only show error if repair creation failed
+        if (!repair) {
+            toast.error('Error al crear la reparación');
+        } else {
+            toast.warning(`Reparación ${repair.code} creada, pero hubo un error al actualizar la vista`);
+        }
     } finally {
         hideLoading(submitBtn);
     }
@@ -4291,8 +4313,31 @@ function renderRepairPanelBody(repair, stages, intakeEvidence = []) {
                 <span class="badge ${getQuoteBadgeClass(repair.quote_status)}">${formatQuoteStatus(repair.quote_status)}</span>
                 <span class="quote-amount">${repair.quote_amount ? formatCurrency(repair.quote_amount) : 'Sin cotizar'}</span>
             </div>
+            ${repair.deposit_amount && repair.deposit_amount > 0 ? `
+                <div style="margin-top: 12px; padding: 12px; background: var(--success-bg); border: 1px solid var(--success-border); border-radius: 8px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <span style="font-size: 13px; color: var(--text-secondary);">💰 Abono recibido:</span>
+                        <span style="font-weight: 600; color: var(--success);">${formatCurrency(repair.deposit_amount)}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 13px; color: var(--text-secondary);">💳 Saldo pendiente:</span>
+                        <span style="font-weight: 700; font-size: 16px; color: var(--primary);">${formatCurrency((repair.quote_amount || 0) - repair.deposit_amount)}</span>
+                    </div>
+                </div>
+            ` : ''}
             ${repair.status !== 'delivered' && repair.status !== 'cancelled' ? `
-                <button class="btn btn-secondary btn-sm mt-2" id="btn-update-quote">Actualizar Cotización</button>
+                <div style="display: flex; gap: 8px; margin-top: 12px;">
+                    <button class="btn btn-secondary btn-sm" id="btn-update-quote" style="flex: 1;">Actualizar Cotización</button>
+                    ${repair.quote_amount && repair.quote_amount > 0 ? `
+                        <button class="btn btn-primary btn-sm" id="btn-add-deposit" style="flex: 1;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;">
+                                <line x1="12" y1="5" x2="12" y2="19"/>
+                                <line x1="5" y1="12" x2="19" y2="12"/>
+                            </svg>
+                            Agregar Abono
+                        </button>
+                    ` : ''}
+                </div>
             ` : ''}
         </div>
         
@@ -4396,6 +4441,8 @@ function renderRepairPanelBody(repair, stages, intakeEvidence = []) {
     
     $('#btn-update-quote')?.addEventListener('click', () => updateQuote(repair));
     
+    $('#btn-add-deposit')?.addEventListener('click', () => addDeposit(repair));
+    
     $('#btn-edit-client')?.addEventListener('click', () => updateClientData(repair));
     
     $('#btn-view-intake-photos')?.addEventListener('click', () => showIntakePhotosModal(intakeEvidence, repair));
@@ -4432,6 +4479,18 @@ async function updateRepairStatus(repair) {
             </div>
             <div class="form-group" id="final-amount-group" style="display: none;">
                 <label class="form-label" style="font-weight: 600; color: var(--primary);">💰 Monto final cobrado al cliente</label>
+                ${repair.deposit_amount && repair.deposit_amount > 0 ? `
+                    <div style="margin-bottom: 12px; padding: 12px; background: var(--info-bg); border: 1px solid var(--info-border); border-radius: 8px;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                            <span style="font-size: 13px; color: var(--text-secondary);">✅ Abono ya recibido:</span>
+                            <span style="font-weight: 600; color: var(--success);">${formatCurrency(repair.deposit_amount)}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="font-size: 14px; font-weight: 600; color: var(--text-primary);">💳 A cobrar ahora:</span>
+                            <span style="font-weight: 700; font-size: 18px; color: var(--primary);">${formatCurrency((repair.quote_amount || 0) - (repair.deposit_amount || 0))}</span>
+                        </div>
+                    </div>
+                ` : ''}
                 <div style="margin-bottom: 8px; padding: 12px; background: var(--warning-bg); border: 1px solid var(--warning-border); border-radius: 8px;">
                     <p style="margin: 0; font-size: 13px; color: var(--text-secondary);">⚠️ <strong>Importante:</strong> Este es el monto total que se le cobró al cliente por la reparación. Asegúrate de que sea correcto antes de continuar.</p>
                 </div>
@@ -5301,6 +5360,78 @@ async function updateQuote(repair) {
     };
     
     newModal.open();
+}
+
+/**
+ * Add deposit to a repair
+ */
+async function addDeposit(repair) {
+    const currentDeposit = repair.deposit_amount || 0;
+    const quoteAmount = repair.quote_amount || 0;
+    const remainingBalance = quoteAmount - currentDeposit;
+    
+    const depositModal = modal.create({
+        title: '💰 Agregar Abono',
+        content: `
+            <div style="margin-bottom: 16px; padding: 12px; background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: 8px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                    <span style="font-size: 13px; color: var(--text-secondary);">Total cotizado:</span>
+                    <span style="font-weight: 600;">${formatCurrency(quoteAmount)}</span>
+                </div>
+                ${currentDeposit > 0 ? `
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                        <span style="font-size: 13px; color: var(--text-secondary);">Abono actual:</span>
+                        <span style="font-weight: 600; color: var(--success);">${formatCurrency(currentDeposit)}</span>
+                    </div>
+                ` : ''}
+                <div style="display: flex; justify-content: space-between; padding-top: 6px; border-top: 1px solid var(--border-subtle);">
+                    <span style="font-size: 14px; font-weight: 600;">Saldo pendiente:</span>
+                    <span style="font-weight: 700; font-size: 16px; color: var(--primary);">${formatCurrency(remainingBalance)}</span>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Monto del abono adicional</label>
+                <input type="number" class="form-input" id="deposit-amount-input" placeholder="0" min="1" max="${remainingBalance}" step="1000" style="font-size: 18px; font-weight: 600; text-align: center;">
+                <small class="form-hint">Monto máximo: ${formatCurrency(remainingBalance)}</small>
+            </div>
+        `,
+        footer: `
+            <button class="btn btn-secondary" data-action="cancel">Cancelar</button>
+            <button class="btn btn-primary" data-action="save">Guardar Abono</button>
+        `,
+        size: 'small'
+    });
+    
+    depositModal.element.querySelector('[data-action="cancel"]').onclick = () => depositModal.destroy();
+    depositModal.element.querySelector('[data-action="save"]').onclick = async () => {
+        const additionalDeposit = parseFloat(depositModal.element.querySelector('#deposit-amount-input').value) || 0;
+        
+        if (additionalDeposit <= 0) {
+            toast.warning('Ingrese un monto válido');
+            return;
+        }
+        
+        if (additionalDeposit > remainingBalance) {
+            toast.warning(`El abono no puede ser mayor al saldo pendiente (${formatCurrency(remainingBalance)})`);
+            return;
+        }
+        
+        try {
+            const newTotalDeposit = currentDeposit + additionalDeposit;
+            await updateRepair(repair.id, {
+                deposit_amount: newTotalDeposit
+            });
+            toast.success(`Abono de ${formatCurrency(additionalDeposit)} registrado exitosamente`);
+            depositModal.destroy();
+            openRepairPanel(repair.id);
+            await loadRepairs();
+        } catch (error) {
+            console.error('Error adding deposit:', error);
+            toast.error('Error al registrar el abono');
+        }
+    };
+    
+    depositModal.open();
 }
 
 /**
