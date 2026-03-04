@@ -18,6 +18,11 @@ import { $ } from '../utils/helpers.js';
 let currentRepair = null;
 let currentShop = null;
 let realtimeChannel = null;
+let currentTrackingToken = null;
+let pollingInterval = null;
+let lastStageSignature = '';
+
+const TRACKING_POLL_MS = 20000;
 
 // Status order for progress bar
 const STATUS_ORDER = ['pending', 'assigned', 'in_progress', 'ready', 'delivered'];
@@ -83,6 +88,7 @@ function init() {
  */
 async function loadByToken(token) {
     showLoading();
+    currentTrackingToken = token;
     
     const supabase = getSupabase();
     if (!supabase) {
@@ -155,6 +161,7 @@ async function searchRepair(code) {
         }
         
         const repair = repairData[0];
+        currentTrackingToken = repair.tracking_token || currentTrackingToken;
         
         // Fetch related data
         const [clientRes, shopRes, techRes] = await Promise.all([
@@ -181,6 +188,7 @@ async function searchRepair(code) {
  * Show loading state
  */
 function showLoading() {
+    stopTrackingSubscriptions();
     $('#loading-state').classList.add('visible');
     $('#not-found').classList.remove('visible');
     $('#tracking-result').classList.remove('visible');
@@ -190,9 +198,25 @@ function showLoading() {
  * Show not found state
  */
 function showNotFound() {
+    stopTrackingSubscriptions();
     $('#loading-state').classList.remove('visible');
     $('#not-found').classList.add('visible');
     $('#tracking-result').classList.remove('visible');
+}
+
+/**
+ * Clear active realtime and polling subscriptions
+ */
+function stopTrackingSubscriptions() {
+    if (realtimeChannel) {
+        realtimeChannel.unsubscribe();
+        realtimeChannel = null;
+    }
+
+    if (pollingInterval) {
+        clearInterval(pollingInterval);
+        pollingInterval = null;
+    }
 }
 
 /**
@@ -297,7 +321,7 @@ async function displayRepair(repair) {
     }
     
     // Load stages
-    await loadStages(repair.id);
+    await loadStages(repair.id, currentTrackingToken);
 }
 
 /**
@@ -391,28 +415,67 @@ function updateStatusDisplay(status) {
 /**
  * Load repair stages
  */
-async function loadStages(repairId) {
+async function loadStages(repairId, trackingToken = currentTrackingToken) {
     const supabase = getSupabase();
     if (!supabase) return;
     
     try {
-        // Consulta los stages con sus evidencias desde la tabla stage_evidence
-        const { data: stages } = await supabase
-            .from('repair_stages')
-            .select(`
-                *,
-                evidence:stage_evidence(id, file_url, file_name)
-            `)
-            .eq('repair_id', repairId)
-            .eq('is_public', true)
-            .order('created_at', { ascending: false });
+        let stages = [];
+
+        if (trackingToken) {
+            // Public tracking path: use RPC functions (compatible with anon users / Safari clients)
+            const { data: publicStages, error: stagesError } = await supabase.rpc('get_stages_by_repair', {
+                p_repair_id: repairId,
+                p_token: trackingToken
+            });
+
+            if (stagesError) {
+                throw stagesError;
+            }
+
+            stages = publicStages || [];
+
+            if (stages.length > 0) {
+                const evidenceResponses = await Promise.all(
+                    stages.map(stage =>
+                        supabase
+                            .rpc('get_stage_evidence_by_stage', {
+                                p_stage_id: stage.id,
+                                p_token: trackingToken
+                            })
+                            .catch(() => ({ data: [] }))
+                    )
+                );
+
+                stages = stages.map((stage, index) => ({
+                    ...stage,
+                    evidence: evidenceResponses[index]?.data || []
+                }));
+            }
+        } else {
+            // Authenticated fallback path
+            const { data: authStages } = await supabase
+                .from('repair_stages')
+                .select(`
+                    *,
+                    evidence:stage_evidence(id, file_url, file_name)
+                `)
+                .eq('repair_id', repairId)
+                .eq('is_public', true)
+                .order('created_at', { ascending: false });
+
+            stages = authStages || [];
+        }
         
         const timelineCard = $('#timeline-card');
         const timeline = $('#timeline');
+        const newSignature = stages.map(stage => `${stage.id}:${stage.updated_at || stage.created_at}`).join('|');
+        const stagesChanged = newSignature !== lastStageSignature;
+        lastStageSignature = newSignature;
         
         if (!stages || stages.length === 0) {
             timelineCard.style.display = 'none';
-            return;
+            return { changed: stagesChanged, count: 0 };
         }
         
         timelineCard.style.display = 'block';
@@ -465,10 +528,68 @@ async function loadStages(repairId) {
                 </div>
             </div>
         `}).join('');
+
+        return { changed: stagesChanged, count: stages.length };
         
     } catch (error) {
         console.error('Error loading stages:', error);
+        return { changed: false, count: 0 };
     }
+}
+
+/**
+ * Poll tracking data (fallback for browsers/devices where realtime can be limited)
+ */
+async function pollTrackingUpdates(repairId) {
+    const supabase = getSupabase();
+    if (!supabase || !currentRepair) return;
+
+    try {
+        let repairData = null;
+
+        if (currentTrackingToken) {
+            const { data } = await supabase.rpc('get_repair_by_tracking_token', {
+                p_token: currentTrackingToken
+            });
+            repairData = data?.[0] || null;
+        } else if (currentRepair.code) {
+            const { data } = await supabase.rpc('get_repair_by_code', {
+                p_code: currentRepair.code
+            });
+            repairData = data?.[0] || null;
+        }
+
+        if (!repairData) return;
+
+        const statusChanged = repairData.status !== currentRepair.status;
+        currentRepair = { ...currentRepair, ...repairData };
+
+        if (statusChanged) {
+            updateProgressSteps(repairData.status);
+            updateStatusDisplay(repairData.status);
+        }
+
+        const stageResult = await loadStages(repairId, currentTrackingToken);
+
+        if (statusChanged || stageResult?.changed) {
+            showUpdateNotification();
+        }
+    } catch (error) {
+        console.error('Error polling tracking updates:', error);
+    }
+}
+
+/**
+ * Start fallback polling updates
+ */
+function startTrackingPolling(repairId) {
+    if (pollingInterval) {
+        clearInterval(pollingInterval);
+    }
+
+    pollingInterval = setInterval(() => {
+        pollTrackingUpdates(repairId);
+    }, TRACKING_POLL_MS);
 }
 
 /**
@@ -478,10 +599,7 @@ function setupRealtimeUpdates(repairId) {
     const supabase = getSupabase();
     if (!supabase) return;
     
-    // Unsubscribe from previous channel
-    if (realtimeChannel) {
-        realtimeChannel.unsubscribe();
-    }
+    stopTrackingSubscriptions();
     
     // Subscribe to repair changes
     realtimeChannel = supabase
@@ -497,6 +615,7 @@ function setupRealtimeUpdates(repairId) {
             (payload) => {
                 console.log('Repair updated:', payload);
                 if (payload.new) {
+                    currentRepair = { ...currentRepair, ...payload.new };
                     // Update status display
                     updateProgressSteps(payload.new.status);
                     updateStatusDisplay(payload.new.status);
@@ -518,12 +637,19 @@ function setupRealtimeUpdates(repairId) {
                 console.log('New stage:', payload);
                 if (payload.new?.is_public) {
                     // Reload stages
-                    loadStages(repairId);
+                    loadStages(repairId, currentTrackingToken);
                     showUpdateNotification();
                 }
             }
         )
-        .subscribe();
+        .subscribe((status) => {
+            if (status === 'SUBSCRIBED') {
+                console.log('Tracking realtime connected');
+            }
+        });
+
+    // Fallback for Safari/iOS or restrictive networks where websocket realtime can fail/sleep
+    startTrackingPolling(repairId);
 }
 
 /**

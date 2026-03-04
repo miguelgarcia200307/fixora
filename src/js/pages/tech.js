@@ -14,16 +14,18 @@ import {
     addRepairStage,
     subscribeToRepairs
 } from '../services/repairService.js';
-import { uploadStageEvidence, getEvidenceUrl } from '../services/storageService.js';
+import { uploadStageEvidence, getEvidenceUrl, getIntakeEvidence } from '../services/storageService.js';
 import { getSupabase } from '../services/supabaseService.js';
 import { 
     formatDate, 
     formatDateTime,
     formatCurrency, 
     formatRepairStatus,
+    formatQuoteStatus,
     formatDeviceCategory,
     getInitials,
-    getStatusBadgeClass
+    getStatusBadgeClass,
+    getQuoteBadgeClass
 } from '../utils/formatters.js';
 import toast from '../utils/toast.js';
 import modal, { initModals } from '../utils/modal.js';
@@ -684,6 +686,10 @@ async function openRepairWorkModal(repairId) {
         const stages = await getRepairStages(repairId);
         console.log('Stages:', stages);
         
+        // Get intake evidence
+        const intakeEvidence = await getIntakeEvidence(repairId);
+        console.log('Intake evidence:', intakeEvidence);
+        
         // Update header
         $('#modal-repair-code').textContent = repair.code;
         const statusBadge = $('#modal-repair-status');
@@ -780,6 +786,66 @@ async function openRepairWorkModal(repairId) {
                 <p class="problem-box-text">${repair.intake_reason || 'Sin especificar'}</p>
             </div>
             
+            ${intakeEvidence.length > 0 ? `
+                <!-- Intake Photos Card -->
+                <div class="work-card" style="background: linear-gradient(135deg, rgba(99,102,241,0.05) 0%, var(--bg-card) 100%); border-left: 3px solid var(--primary);">
+                    <div class="work-card-header">
+                        <div class="work-card-icon" style="background: rgba(99,102,241,0.15); color: #6366F1;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                                <circle cx="8.5" cy="8.5" r="1.5"/>
+                                <polyline points="21 15 16 10 5 21"/>
+                            </svg>
+                        </div>
+                        <span class="work-card-title">Fotos de Ingreso</span>
+                    </div>
+                    <div class="work-card-body">
+                        <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 12px;">${intakeEvidence.length} foto${intakeEvidence.length !== 1 ? 's' : ''} tomada${intakeEvidence.length !== 1 ? 's' : ''} al recibir el equipo</p>
+                        <button class="btn btn-primary btn-sm" id="btn-view-intake-photos-tech" style="width: 100%;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                <circle cx="12" cy="12" r="3"/>
+                            </svg>
+                            Ver Fotos de Ingreso
+                        </button>
+                    </div>
+                </div>
+            ` : ''}
+            
+            <!-- Quote Card -->
+            <div class="work-card">
+                <div class="work-card-header">
+                    <div class="work-card-icon" style="background: rgba(16, 185, 129, 0.15); color: #10B981;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="1" x2="12" y2="23"/>
+                            <line x1="17" y1="5" x2="7" y2="5"/>
+                            <line x1="19" y1="9" x2="5" y2="9"/>
+                            <line x1="17" y1="13" x2="7" y2="13"/>
+                            <line x1="19" y1="17" x2="5" y2="17"/>
+                            <line x1="17" y1="21" x2="7" y2="21"/>
+                        </svg>
+                    </div>
+                    <span class="work-card-title">Cotización</span>
+                </div>
+                <div class="work-card-body">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                        <div>
+                            <span class="badge ${getQuoteBadgeClass(repair.quote_status)}">${formatQuoteStatus(repair.quote_status)}</span>
+                            <span style="margin-left: 8px; font-size: 20px; font-weight: 700; color: var(--primary);">${repair.quote_amount ? formatCurrency(repair.quote_amount) : 'Sin cotizar'}</span>
+                        </div>
+                    </div>
+                    ${repair.status !== 'delivered' && repair.status !== 'cancelled' ? `
+                        <button class="btn btn-secondary btn-sm" id="btn-update-quote-tech">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                            </svg>
+                            Actualizar Cotización
+                        </button>
+                    ` : ''}
+                </div>
+            </div>
+            
             <!-- Quick Actions Bar -->
             ${repair.status === 'assigned' ? `
                 <div class="quick-actions">
@@ -872,7 +938,9 @@ async function openRepairWorkModal(repairId) {
         body.querySelector('#btn-start-repair')?.addEventListener('click', () => startRepair(repair.id));
         body.querySelector('#btn-add-stage')?.addEventListener('click', () => openStageModal(repair.id));
         body.querySelector('#btn-toggle-waiting')?.addEventListener('click', () => toggleWaitingParts(repair));
-        body.querySelector('#btn-mark-ready')?.addEventListener('click', () => markAsReady(repair.id));
+        body.querySelector('#btn-mark-ready')?.addEventListener('click', () => markAsReady(repair));
+        body.querySelector('#btn-update-quote-tech')?.addEventListener('click', () => updateQuoteTech(repair));
+        body.querySelector('#btn-view-intake-photos-tech')?.addEventListener('click', () => showIntakePhotosModal(intakeEvidence, repair));
         
         // Password reveal
         body.querySelector('#btn-reveal-password')?.addEventListener('click', (e) => {
@@ -960,13 +1028,18 @@ async function toggleWaitingParts(repair) {
 /**
  * Mark as ready
  */
-async function markAsReady(repairId) {
+async function markAsReady(repair) {
     try {
-        await updateRepair(repairId, { status: 'ready' });
+        // If quote_amount is 0 or null, ask for the final amount first
+        if (!repair.quote_amount || repair.quote_amount === 0) {
+            return await markAsReadyWithQuote(repair);
+        }
+        
+        await updateRepair(repair.id, { status: 'ready' });
         
         // Create stage
         await addRepairStage({
-            repair_id: repairId,
+            repair_id: repair.id,
             stage_type: 'completed',
             stage_name: 'Reparación completada',
             description: 'El dispositivo está listo para ser recogido por el cliente.',
@@ -981,6 +1054,319 @@ async function markAsReady(repairId) {
         console.error('Error marking ready:', error);
         toast.error('Error al actualizar');
     }
+}
+
+/**
+ * Mark as ready with quote confirmation
+ */
+async function markAsReadyWithQuote(repair) {
+    return new Promise((resolve) => {
+        const quoteModal = modal.create({
+            title: '💰 Establecer Precio de Reparación',
+            content: `
+                <div style="margin-bottom: 16px; padding: 12px; background: var(--warning-bg); border: 1px solid var(--warning-border); border-radius: 8px;">
+                    <p style="margin: 0; font-size: 13px; color: var(--text-secondary);">⚠️ <strong>Importante:</strong> La cotización actual es <strong>$0</strong>. Por favor, ingresa el monto que se le cobrará al cliente por esta reparación antes de marcarla como lista.</p>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" style="font-weight: 600;">Monto a cobrar al cliente</label>
+                    <input type="number" class="form-input" id="ready-quote-amount" value="0" min="0" step="1000" style="font-size: 18px; font-weight: 600; text-align: center;" placeholder="Ej: 50000">
+                    <small style="display: block; margin-top: 6px; color: var(--text-muted);">Este será el precio final de la reparación</small>
+                </div>
+            `,
+            footer: `
+                <button class="btn btn-secondary" data-action="cancel">Cancelar</button>
+                <button class="btn btn-success" data-action="save">Marcar como Lista</button>
+            `,
+            size: 'small'
+        });
+        
+        const amountInput = quoteModal.element.querySelector('#ready-quote-amount');
+        
+        quoteModal.element.querySelector('[data-action="cancel"]').onclick = () => {
+            quoteModal.destroy();
+            resolve(false);
+        };
+        
+        quoteModal.element.querySelector('[data-action="save"]').onclick = async () => {
+            const amount = parseFloat(amountInput.value) || 0;
+            
+            if (amount <= 0) {
+                toast.warning('Por favor ingresa un monto válido');
+                amountInput.focus();
+                return;
+            }
+            
+            try {
+                // Update repair with quote and status
+                await updateRepair(repair.id, {
+                    status: 'ready',
+                    quote_amount: amount,
+                    quote_status: 'accepted'
+                });
+                
+                // Create stage
+                await addRepairStage({
+                    repair_id: repair.id,
+                    stage_type: 'completed',
+                    stage_name: 'Reparación completada',
+                    description: `El dispositivo está listo para ser recogido por el cliente. Precio de reparación: ${formatCurrency(amount)}`,
+                    is_public: true
+                });
+                
+                toast.success('¡Reparación marcada como lista!');
+                quoteModal.destroy();
+                modal.close('repair-work-modal');
+                await loadDashboardData();
+                resolve(true);
+                
+            } catch (error) {
+                console.error('Error marking ready:', error);
+                toast.error('Error al actualizar');
+                resolve(false);
+            }
+        };
+        
+        quoteModal.open();
+        
+        // Focus and select input
+        setTimeout(() => {
+            amountInput.focus();
+            amountInput.select();
+        }, 300);
+    });
+}
+
+/**
+ * Update quote (for technicians)
+ */
+async function updateQuoteTech(repair) {
+    const quoteModal = modal.create({
+        title: 'Actualizar Cotización',
+        content: `
+            <div class="form-group">
+                <label class="form-label">Estado de cotización</label>
+                <select class="form-select" id="quote-status-select-tech">
+                    <option value="pending" ${repair.quote_status === 'pending' ? 'selected' : ''}>Pendiente</option>
+                    <option value="approximate" ${repair.quote_status === 'approximate' ? 'selected' : ''}>Aproximada</option>
+                    <option value="accepted" ${repair.quote_status === 'accepted' ? 'selected' : ''}>Aceptada</option>
+                    <option value="rejected" ${repair.quote_status === 'rejected' ? 'selected' : ''}>Rechazada</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Monto</label>
+                <input type="number" class="form-input" id="quote-amount-input-tech" value="${repair.quote_amount || 0}" min="0" step="1000" placeholder="Ej: 50000">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Descripción (opcional)</label>
+                <textarea class="form-textarea" id="quote-description-input-tech" rows="3" placeholder="Detalles de la cotización...">${repair.quote_description || ''}</textarea>
+            </div>
+        `,
+        footer: `
+            <button class="btn btn-secondary" data-action="cancel">Cancelar</button>
+            <button class="btn btn-primary" data-action="save">Guardar</button>
+        `,
+        size: 'small'
+    });
+    
+    quoteModal.element.querySelector('[data-action="cancel"]').onclick = () => quoteModal.destroy();
+    quoteModal.element.querySelector('[data-action="save"]').onclick = async () => {
+        try {
+            await updateRepair(repair.id, {
+                quote_status: quoteModal.element.querySelector('#quote-status-select-tech').value,
+                quote_amount: parseFloat(quoteModal.element.querySelector('#quote-amount-input-tech').value) || 0,
+                quote_description: quoteModal.element.querySelector('#quote-description-input-tech').value
+            });
+            toast.success('Cotización actualizada');
+            quoteModal.destroy();
+            openRepairWorkModal(repair.id);
+        } catch (error) {
+            toast.error('Error al actualizar');
+        }
+    };
+    
+    quoteModal.open();
+}
+
+/**
+ * Show intake photos modal
+ */
+function showIntakePhotosModal(photos, repair) {
+    if (!photos || photos.length === 0) {
+        toast.info('No hay fotos de ingreso');
+        return;
+    }
+    
+    const photosHtml = photos.map((photo, index) => `
+        <div class="intake-photo-item" style="position: relative; cursor: pointer;" data-index="${index}">
+            <img src="${photo.file_url}" 
+                 alt="Foto ${index + 1}" 
+                 style="width: 100%; height: 200px; object-fit: cover; border-radius: 8px; transition: transform 0.2s;"
+                 onmouseover="this.style.transform='scale(1.05)'"
+                 onmouseout="this.style.transform='scale(1)'">
+            <div style="position: absolute; top: 8px; left: 8px; background: rgba(0,0,0,0.7); color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600;">
+                ${index + 1}/${photos.length}
+            </div>
+            ${photo.description ? `
+                <div style="position: absolute; bottom: 8px; left: 8px; right: 8px; background: rgba(0,0,0,0.7); color: white; padding: 6px 8px; border-radius: 4px; font-size: 11px;">
+                    ${photo.description}
+                </div>
+            ` : ''}
+        </div>
+    `).join('');
+    
+    const newModal = modal.create({
+        title: `📸 Fotos de Ingreso - ${repair.code}`,
+        content: `
+            <div style="margin-bottom: 12px; padding: 12px; background: var(--bg-secondary); border-radius: 8px;">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+                        <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+                    </svg>
+                    <strong>Dispositivo:</strong> ${repair.device_brand} ${repair.device_model}
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                    </svg>
+                    <strong>Fecha de ingreso:</strong> ${formatDateTime(repair.intake_date)}
+                </div>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; max-height: 60vh; overflow-y: auto;">
+                ${photosHtml}
+            </div>
+            <p style="margin-top: 12px; font-size: 12px; color: var(--text-muted); text-align: center;">
+                Haz clic en cualquier foto para verla en tamaño completo
+            </p>
+        `,
+        footer: `
+            <button class="btn btn-secondary" data-action="close">Cerrar</button>
+        `,
+        size: 'large'
+    });
+    
+    // Add click handlers for photos
+    newModal.element.querySelectorAll('.intake-photo-item').forEach((item) => {
+        item.addEventListener('click', () => {
+            const index = parseInt(item.dataset.index);
+            showPhotoLightbox(photos, index);
+        });
+    });
+    
+    newModal.element.querySelector('[data-action="close"]').onclick = () => newModal.destroy();
+    
+    newModal.open();
+}
+
+/**
+ * Show photo lightbox (fullscreen viewer)
+ */
+function showPhotoLightbox(photos, startIndex = 0) {
+    let currentIndex = startIndex;
+    
+    const updatePhoto = () => {
+        const photo = photos[currentIndex];
+        const img = lightbox.querySelector('#lightbox-image');
+        const counter = lightbox.querySelector('#lightbox-counter');
+        const description = lightbox.querySelector('#lightbox-description');
+        
+        img.src = photo.file_url;
+        counter.textContent = `${currentIndex + 1} / ${photos.length}`;
+        description.textContent = photo.description || '';
+        description.style.display = photo.description ? 'block' : 'none';
+    };
+    
+    const lightbox = document.createElement('div');
+    lightbox.id = 'photo-lightbox';
+    lightbox.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.95);
+        z-index: 10000;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        backdrop-filter: blur(5px);
+    `;
+    
+    lightbox.innerHTML = `
+        <div style="position: absolute; top: 16px; left: 16px; right: 16px; display: flex; justify-content: space-between; align-items: center; color: white; z-index: 10001;">
+            <div id="lightbox-counter" style="font-size: 18px; font-weight: 600; background: rgba(0,0,0,0.5); padding: 8px 16px; border-radius: 8px;">
+                ${currentIndex + 1} / ${photos.length}
+            </div>
+            <button id="lightbox-close" style="background: rgba(0,0,0,0.5); border: none; color: white; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 24px; transition: background 0.2s;">
+                ×
+            </button>
+        </div>
+        
+        <div style="flex: 1; display: flex; align-items: center; justify-content: center; width: 100%; padding: 80px 20px 60px;">
+            <img id="lightbox-image" src="${photos[currentIndex].file_url}" style="max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 8px; box-shadow: 0 8px 32px rgba(0,0,0,0.5);">
+        </div>
+        
+        ${photos[currentIndex].description ? `
+            <div id="lightbox-description" style="position: absolute; bottom: 60px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.7); color: white; padding: 12px 24px; border-radius: 8px; max-width: 80%; text-align: center;">
+                ${photos[currentIndex].description}
+            </div>
+        ` : '<div id="lightbox-description" style="display: none;"></div>'}
+        
+        <div style="position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%); display: flex; gap: 12px;">
+            ${photos.length > 1 ? `
+                <button id="lightbox-prev" style="background: rgba(255,255,255,0.9); border: none; color: #333; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-weight: 600; transition: background 0.2s;">
+                    ← Anterior
+                </button>
+                <button id="lightbox-next" style="background: rgba(255,255,255,0.9); border: none; color: #333; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-weight: 600; transition: background 0.2s;">
+                    Siguiente →
+                </button>
+            ` : ''}
+        </div>
+    `;
+    
+    document.body.appendChild(lightbox);
+    
+    // Close button
+    lightbox.querySelector('#lightbox-close').addEventListener('click', () => {
+        lightbox.remove();
+    });
+    
+    // Navigation
+    if (photos.length > 1) {
+        lightbox.querySelector('#lightbox-prev').addEventListener('click', () => {
+            currentIndex = (currentIndex - 1 + photos.length) % photos.length;
+            updatePhoto();
+        });
+        
+        lightbox.querySelector('#lightbox-next').addEventListener('click', () => {
+            currentIndex = (currentIndex + 1) % photos.length;
+            updatePhoto();
+        });
+        
+        // Keyboard navigation
+        const handleKeyboard = (e) => {
+            if (e.key === 'ArrowLeft') {
+                currentIndex = (currentIndex - 1 + photos.length) % photos.length;
+                updatePhoto();
+            } else if (e.key === 'ArrowRight') {
+                currentIndex = (currentIndex + 1) % photos.length;
+                updatePhoto();
+            } else if (e.key === 'Escape') {
+                lightbox.remove();
+                document.removeEventListener('keydown', handleKeyboard);
+            }
+        };
+        
+        document.addEventListener('keydown', handleKeyboard);
+    }
+    
+    // Close on background click
+    lightbox.addEventListener('click', (e) => {
+        if (e.target === lightbox) {
+            lightbox.remove();
+        }
+    });
 }
 
 /**

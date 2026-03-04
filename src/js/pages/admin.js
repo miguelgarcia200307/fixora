@@ -16,9 +16,10 @@ import {
     getRepairStages,
     assignTechnician,
     subscribeToRepairs,
-    getRepairStats
+    getRepairStats,
+    updateClient
 } from '../services/repairService.js';
-import { uploadIntakeEvidence } from '../services/storageService.js';
+import { uploadIntakeEvidence, getIntakeEvidence } from '../services/storageService.js';
 import { sendToClientFromAdmin, sendToTechnician } from '../services/whatsappService.js';
 import { getSupabase } from '../services/supabaseService.js';
 import { 
@@ -462,6 +463,53 @@ function renderRepairsList(repairsData) {
 async function loadTechnicians() {
     try {
         technicians = await getShopTechnicians(shopId);
+        
+        // Obtener estadísticas de reparaciones para cada técnico
+        const supabase = getSupabase();
+        const techsWithStats = await Promise.all(technicians.map(async (tech) => {
+            // Total de reparaciones
+            const { count: totalRepairs } = await supabase
+                .from('repairs')
+                .select('id', { count: 'exact', head: true })
+                .eq('tech_id', tech.id)
+                .eq('is_deleted', false);
+            
+            // Reparaciones activas (no entregadas ni canceladas)
+            const { count: activeRepairs } = await supabase
+                .from('repairs')
+                .select('id', { count: 'exact', head: true })
+                .eq('tech_id', tech.id)
+                .not('status', 'in', '(delivered,cancelled)')
+                .eq('is_deleted', false);
+            
+            // Reparaciones completadas (entregadas)
+            const { count: completedRepairs } = await supabase
+                .from('repairs')
+                .select('id', { count: 'exact', head: true })
+                .eq('tech_id', tech.id)
+                .eq('status', 'delivered')
+                .eq('is_deleted', false);
+            
+            // Total de comisiones ganadas
+            const { data: commissionData } = await supabase
+                .from('repairs')
+                .select('tech_commission')
+                .eq('tech_id', tech.id)
+                .eq('status', 'delivered')
+                .eq('is_deleted', false);
+            
+            const totalCommissions = commissionData?.reduce((sum, r) => sum + (r.tech_commission || 0), 0) || 0;
+            
+            return {
+                ...tech,
+                repairs_count: totalRepairs || 0,
+                active_repairs: activeRepairs || 0,
+                completed_repairs: completedRepairs || 0,
+                total_commissions: totalCommissions
+            };
+        }));
+        
+        technicians = techsWithStats;
         renderTechniciansGrid(technicians);
         populateTechSelect();
     } catch (error) {
@@ -490,25 +538,65 @@ function renderTechniciansGrid(techsData) {
         <div class="card tech-card" data-id="${tech.id}">
             <div class="card-body">
                 <div class="tech-card-header">
-                    <div class="avatar">${getInitials(tech.full_name)}</div>
+                    <div class="avatar" style="background: linear-gradient(135deg, var(--accent, #6366F1) 0%, var(--accent-dark, #4F46E5) 100%);">${getInitials(tech.full_name)}</div>
                     <div class="tech-card-info">
                         <span class="tech-name">${tech.full_name}</span>
-                        <span class="tech-email">${tech.email}</span>
+                        ${tech.email ? `<span class="tech-email">${tech.email}</span>` : ''}
+                        ${tech.phone || tech.whatsapp ? `
+                            <span class="tech-phone" style="font-size: 12px; color: var(--text-secondary); margin-top: 2px;">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle;">
+                                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+                                </svg>
+                                ${formatPhone(tech.phone || tech.whatsapp)}
+                            </span>
+                        ` : ''}
                     </div>
                 </div>
-                <div class="tech-card-stats">
-                    <div class="tech-stat">
-                        <span class="tech-stat-value">${tech.repairs_count || 0}</span>
-                        <span class="tech-stat-label">Reparaciones</span>
+                
+                <div class="tech-card-stats-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin: 16px 0;">
+                    <div class="tech-stat" style="background: var(--bg-secondary); padding: 12px; border-radius: 8px;">
+                        <span class="tech-stat-value" style="font-size: 24px; font-weight: 700; color: var(--primary);">${tech.repairs_count || 0}</span>
+                        <span class="tech-stat-label" style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Total</span>
                     </div>
-                    <div class="tech-stat">
-                        <span class="tech-stat-value">${tech.commission_percentage || tech.commission_rate || 30}%</span>
-                        <span class="tech-stat-label">Comisión</span>
+                    <div class="tech-stat" style="background: var(--bg-secondary); padding: 12px; border-radius: 8px;">
+                        <span class="tech-stat-value" style="font-size: 24px; font-weight: 700; color: var(--warning);">${tech.active_repairs || 0}</span>
+                        <span class="tech-stat-label" style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Activas</span>
+                    </div>
+                    <div class="tech-stat" style="background: var(--bg-secondary); padding: 12px; border-radius: 8px;">
+                        <span class="tech-stat-value" style="font-size: 24px; font-weight: 700; color: var(--success);">${tech.completed_repairs || 0}</span>
+                        <span class="tech-stat-label" style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Completadas</span>
+                    </div>
+                    <div class="tech-stat" style="background: var(--bg-secondary); padding: 12px; border-radius: 8px;">
+                        <span class="tech-stat-value" style="font-size: 24px; font-weight: 700; color: var(--accent);">${tech.commission_percentage || tech.commission_rate || 30}%</span>
+                        <span class="tech-stat-label" style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Comisión</span>
                     </div>
                 </div>
+                
+                ${tech.total_commissions > 0 ? `
+                    <div style="padding: 10px; background: linear-gradient(135deg, var(--success-bg, rgba(34,197,94,0.1)) 0%, transparent 100%); border-radius: 8px; margin-bottom: 12px; border-left: 3px solid var(--success);">
+                        <div style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Comisiones Ganadas</div>
+                        <div style="font-size: 20px; font-weight: 700; color: var(--success);">${formatCurrency(tech.total_commissions)}</div>
+                    </div>
+                ` : ''}
+                
+                <div style="display: flex; gap: 4px; margin-bottom: 12px; flex-wrap: wrap;">
+                    <span class="badge" style="font-size: 10px; padding: 4px 8px; background: ${tech.is_active ? 'var(--success-bg, rgba(34,197,94,0.1))' : 'var(--error-bg, rgba(239,68,68,0.1))'}; color: ${tech.is_active ? 'var(--success)' : 'var(--error)'}; border: 1px solid ${tech.is_active ? 'var(--success)' : 'var(--error)'}; border-radius: 4px;">
+                        ● ${tech.is_active ? 'Activo' : 'Inactivo'}
+                    </span>
+                    <span class="badge" style="font-size: 10px; padding: 4px 8px; background: var(--bg-secondary); color: var(--text-secondary); border-radius: 4px;">
+                        Desde ${formatDate(tech.created_at)}
+                    </span>
+                </div>
+                
                 <div class="tech-card-actions">
-                    <button class="btn btn-ghost btn-sm btn-edit-tech">Editar</button>
-                    <button class="btn btn-whatsapp btn-sm btn-whatsapp-tech">
+                    <button class="btn btn-ghost btn-sm btn-edit-tech" style="flex: 1;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                        </svg>
+                        Editar
+                    </button>
+                    <button class="btn btn-whatsapp btn-sm btn-whatsapp-tech" style="flex: 1;">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
                         </svg>
@@ -4053,6 +4141,10 @@ async function openRepairPanel(repairId) {
         const stages = await getRepairStages(repairId);
         console.log('Stages:', stages);
         
+        // Get intake evidence
+        const intakeEvidence = await getIntakeEvidence(repairId);
+        console.log('Intake evidence:', intakeEvidence);
+        
         // Update header
         $('#panel-repair-code').textContent = repair.code;
         const statusBadge = $('#panel-repair-status');
@@ -4060,7 +4152,7 @@ async function openRepairPanel(repairId) {
         statusBadge.className = `badge ${getStatusBadgeClass(repair.status)}`;
         
         // Render body
-        renderRepairPanelBody(repair, stages);
+        renderRepairPanelBody(repair, stages, intakeEvidence);
         
     } catch (error) {
         console.error('Error loading repair:', error);
@@ -4071,7 +4163,7 @@ async function openRepairPanel(repairId) {
 /**
  * Render repair panel body
  */
-function renderRepairPanelBody(repair, stages) {
+function renderRepairPanelBody(repair, stages, intakeEvidence = []) {
     const body = $('#repair-panel-body');
     
     const trackingUrl = `${window.location.origin}/track.html?token=${repair.tracking_token}`;
@@ -4097,6 +4189,13 @@ function renderRepairPanelBody(repair, stages) {
             <p><strong>${repair.client?.name || '-'}</strong></p>
             <p>${formatPhone(repair.client?.phone) || '-'}</p>
             ${repair.client?.email ? `<p>${repair.client.email}</p>` : ''}
+            <button class="btn btn-secondary btn-sm mt-2" id="btn-edit-client">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                </svg>
+                Editar Datos
+            </button>
         </div>
         
         <div class="panel-section">
@@ -4112,13 +4211,34 @@ function renderRepairPanelBody(repair, stages) {
             <p>${repair.intake_reason || 'Sin especificar'}</p>
         </div>
         
+        ${intakeEvidence.length > 0 ? `
+            <div class="panel-section" style="background: linear-gradient(135deg, var(--primary-bg, rgba(99,102,241,0.05)) 0%, var(--bg-card) 100%); border-left: 3px solid var(--primary);">
+                <h4>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle;">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                        <circle cx="8.5" cy="8.5" r="1.5"/>
+                        <polyline points="21 15 16 10 5 21"/>
+                    </svg>
+                    Fotos de Ingreso
+                </h4>
+                <p style="font-size: 13px; color: var(--text-secondary); margin: 8px 0;">${intakeEvidence.length} foto${intakeEvidence.length !== 1 ? 's' : ''} tomada${intakeEvidence.length !== 1 ? 's' : ''} al recibir el equipo</p>
+                <button class="btn btn-primary btn-sm" id="btn-view-intake-photos" style="width: 100%;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                        <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                    Ver Fotos de Ingreso
+                </button>
+            </div>
+        ` : ''}
+        
         <div class="panel-section">
             <h4>Cotización</h4>
             <div class="quote-info">
                 <span class="badge ${getQuoteBadgeClass(repair.quote_status)}">${formatQuoteStatus(repair.quote_status)}</span>
-                <span class="quote-amount">${repair.quote_amount ? formatCurrency(repair.quote_amount) : '-'}</span>
+                <span class="quote-amount">${repair.quote_amount ? formatCurrency(repair.quote_amount) : 'Sin cotizar'}</span>
             </div>
-            ${repair.quote_status === 'pending' || repair.quote_status === 'approximate' ? `
+            ${repair.status !== 'delivered' && repair.status !== 'cancelled' ? `
                 <button class="btn btn-secondary btn-sm mt-2" id="btn-update-quote">Actualizar Cotización</button>
             ` : ''}
         </div>
@@ -4166,6 +4286,14 @@ function renderRepairPanelBody(repair, stages) {
                 ${repair.status !== 'delivered' && repair.status !== 'cancelled' ? `
                     <button class="btn btn-secondary" id="btn-update-status">Cambiar Estado</button>
                 ` : ''}
+                ${repair.status === 'ready' ? `
+                    <button class="btn btn-success" id="btn-notify-ready">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                        </svg>
+                        Notificar: Equipo Listo
+                    </button>
+                ` : ''}
                 <button class="btn btn-whatsapp" id="btn-whatsapp-panel">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
@@ -4204,11 +4332,20 @@ function renderRepairPanelBody(repair, stages) {
     
     $('#btn-update-status')?.addEventListener('click', () => updateRepairStatus(repair));
     
+    $('#btn-notify-ready')?.addEventListener('click', async () => {
+        const whatsappService = await import('../services/whatsappService.js');
+        whatsappService.sendReadyForPickupNotification(repair, shop);
+    });
+    
     $('#btn-whatsapp-panel')?.addEventListener('click', () => {
         showWhatsAppTargetModal(repair);
     });
     
     $('#btn-update-quote')?.addEventListener('click', () => updateQuote(repair));
+    
+    $('#btn-edit-client')?.addEventListener('click', () => updateClientData(repair));
+    
+    $('#btn-view-intake-photos')?.addEventListener('click', () => showIntakePhotosModal(intakeEvidence, repair));
 }
 
 /**
@@ -4241,8 +4378,12 @@ async function updateRepairStatus(repair) {
                 </select>
             </div>
             <div class="form-group" id="final-amount-group" style="display: none;">
-                <label class="form-label">Monto final cobrado</label>
-                <input type="number" class="form-input" id="final-amount-input" value="${repair.final_amount || repair.quote_amount || 0}">
+                <label class="form-label" style="font-weight: 600; color: var(--primary);">💰 Monto final cobrado al cliente</label>
+                <div style="margin-bottom: 8px; padding: 12px; background: var(--warning-bg); border: 1px solid var(--warning-border); border-radius: 8px;">
+                    <p style="margin: 0; font-size: 13px; color: var(--text-secondary);">⚠️ <strong>Importante:</strong> Este es el monto total que se le cobró al cliente por la reparación. Asegúrate de que sea correcto antes de continuar.</p>
+                </div>
+                <input type="number" class="form-input" id="final-amount-input" value="${repair.final_amount || repair.quote_amount || 0}" min="0" step="1000" style="font-size: 18px; font-weight: 600; text-align: center;">
+                <small style="display: block; margin-top: 6px; color: var(--text-muted);">Monto estimado: ${repair.quote_amount ? formatCurrency(repair.quote_amount) : 'Sin cotización previa'}</small>
             </div>
         `,
         footer: `
@@ -4278,6 +4419,13 @@ async function updateRepairStatus(repair) {
             return;
         }
         
+        if (newStatus === 'ready') {
+            // Special handling for ready status - offer to notify client
+            newModal.destroy();
+            await handleReadyForPickup(repair);
+            return;
+        }
+        
         try {
             await updateRepair(repair.id, updateData);
             toast.success('Estado actualizado');
@@ -4291,6 +4439,140 @@ async function updateRepairStatus(repair) {
     };
     
     newModal.open();
+}
+
+/**
+ * Handle ready for pickup status change
+ */
+async function handleReadyForPickup(repair) {
+    return new Promise((resolve) => {
+        const readyModal = modal.create({
+            title: '\ud83c\udf89 Equipo Listo para Entregar',
+            content: `
+                <div class="ready-notification-content">
+                    <div class="success-banner" style="background: var(--success-bg); border: 1px solid var(--success-border); border-radius: 12px; padding: 16px; margin-bottom: 20px; display: flex; gap: 12px; align-items: start;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 24px; height: 24px; color: var(--success); flex-shrink: 0; margin-top: 2px;">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                            <polyline points="22 4 12 14.01 9 11.01"/>
+                        </svg>
+                        <div>
+                            <strong>¡Excelente! El equipo está listo</strong>
+                            <p style="margin: 6px 0 0 0; font-size: 13px; opacity: 0.9;">Ahora puedes notificar al cliente por WhatsApp para que venga a recogerlo.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="ready-summary" style="background: var(--bg-elevated); border-radius: 12px; padding: 16px; margin-bottom: 20px;">
+                        <h4 style="margin: 0 0 12px 0; font-size: 14px; color: var(--text-secondary);">Resumen de la reparación:</h4>
+                        <div style="display: grid; gap: 8px;">
+                            <div style="display: flex; justify-content: space-between;">
+                                <span style="color: var(--text-secondary);">Código:</span>
+                                <span style="font-weight: 600;">${repair.code}</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between;">
+                                <span style="color: var(--text-secondary);">Cliente:</span>
+                                <span style="font-weight: 600;">${repair.client?.name || 'Sin nombre'}</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between;">
+                                <span style="color: var(--text-secondary);">Dispositivo:</span>
+                                <span style="font-weight: 600;">${repair.device_brand} ${repair.device_model}</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between;">
+                                <span style="color: var(--text-secondary);">Precio:</span>
+                                <span style="font-weight: 600; color: var(--success);">${repair.quote_amount ? formatCurrency(repair.quote_amount) : 'Por definir'}</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="notification-options" style="background: var(--bg-card); border-radius: 12px; padding: 16px;">
+                        <h4 style="margin: 0 0 12px 0; font-size: 14px; display: flex; align-items: center; gap: 8px;">
+                            <svg viewBox="0 0 24 24" fill="currentColor" style="width: 20px; height: 20px; color: #25D366;">
+                                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                            </svg>
+                            Notificación al Cliente
+                        </h4>
+                        <p style="margin: 0 0 16px 0; font-size: 13px; color: var(--text-secondary);">El cliente recibirá un mensaje con:</p>
+                        <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: var(--text-secondary); line-height: 1.6;">
+                            <li>Confirmación de que su equipo está listo</li>
+                            <li>Dirección y datos de contacto del taller</li>
+                            <li>Monto a pagar</li>
+                            <li><strong>Aviso importante:</strong> Plazo de 30 días para recoger</li>
+                        </ul>
+                    </div>
+                </div>
+            `,
+            footer: `
+                <button class="btn btn-secondary" data-action="skip">Solo Cambiar Estado</button>
+                <button class="btn btn-success" data-action="notify">
+                    <svg viewBox="0 0 24 24" fill="currentColor" style="width: 16px; height: 16px; margin-right: 6px;">
+                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                    </svg>
+                    Cambiar Estado y Notificar
+                </button>
+            `,
+            size: 'medium'
+        });
+        
+        // Skip - just change status without notification
+        readyModal.element.querySelector('[data-action="skip"]').onclick = async () => {
+            try {
+                await updateRepair(repair.id, { status: 'ready' });
+                toast.success('Estado actualizado a: Listo para entrega');
+                readyModal.destroy();
+                openRepairPanel(repair.id);
+                await loadRepairs();
+                await loadDashboardData();
+                resolve(true);
+            } catch (error) {
+                console.error('Error updating status:', error);
+                toast.error('Error al actualizar estado');
+                resolve(false);
+            }
+        };
+        
+        // Notify - change status and send WhatsApp
+        readyModal.element.querySelector('[data-action="notify"]').onclick = async () => {
+            const notifyBtn = readyModal.element.querySelector('[data-action="notify"]');
+            
+            try {
+                showLoading(notifyBtn, { text: 'Enviando...' });
+                
+                // Update status first
+                await updateRepair(repair.id, { status: 'ready' });
+                
+                // Send WhatsApp notification
+                const { sendReadyForPickupNotification } = await import('../services/whatsappService.js');
+                await sendReadyForPickupNotification(repair, shop);
+                
+                hideLoading(notifyBtn);
+                toast.success('¡Estado actualizado y cliente notificado!');
+                readyModal.destroy();
+                openRepairPanel(repair.id);
+                await loadRepairs();
+                await loadDashboardData();
+                resolve(true);
+                
+            } catch (error) {
+                hideLoading(notifyBtn);
+                console.error('Error sending notification:', error);
+                
+                // Still update status even if notification fails
+                try {
+                    await updateRepair(repair.id, { status: 'ready' });
+                    toast.warning('Estado actualizado pero no se pudo enviar la notificación');
+                    readyModal.destroy();
+                    openRepairPanel(repair.id);
+                    await loadRepairs();
+                    await loadDashboardData();
+                } catch (updateError) {
+                    toast.error('Error al actualizar estado');
+                }
+                
+                resolve(false);
+            }
+        };
+        
+        readyModal.open();
+    });
 }
 
 /**
@@ -4969,11 +5251,307 @@ async function updateQuote(repair) {
 }
 
 /**
+ * Update client data for a repair
+ */
+async function updateClientData(repair) {
+    const clientData = repair.client || {};
+    
+    // Obtener el número de reparaciones de este cliente
+    const repairCount = await getClientRepairCount(clientData.id);
+    
+    const newModal = modal.create({
+        title: 'Editar Datos del Cliente',
+        content: `
+            <div class="form-group">
+                <label class="form-label">Nombre completo *</label>
+                <input type="text" class="form-input" id="edit-client-name" value="${clientData.name || ''}" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Teléfono *</label>
+                <input type="tel" class="form-input" id="edit-client-phone" value="${clientData.phone || ''}" placeholder="1234567890" required>
+                <small class="form-hint">Número de 10 dígitos sin espacios ni guiones</small>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Email</label>
+                <input type="email" class="form-input" id="edit-client-email" value="${clientData.email || ''}" placeholder="cliente@ejemplo.com">
+            </div>
+            <p class="form-hint" style="margin-top: 16px; padding: 12px; background: var(--warning-bg, #FFF3CD); border-left: 3px solid var(--warning, #FFA500); border-radius: 4px;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: middle; color: var(--warning);">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                </svg>
+                <strong>Importante:</strong> Los cambios se aplicarán a este cliente en todas sus reparaciones${repairCount > 0 ? ` (${repairCount} reparación${repairCount !== 1 ? 'es' : ''} en total)` : ''}.
+            </p>
+        `,
+        footer: `
+            <button class="btn btn-secondary" data-action="cancel">Cancelar</button>
+            <button class="btn btn-primary" data-action="save">Guardar Cambios</button>
+        `,
+        size: 'small'
+    });
+    
+    newModal.element.querySelector('[data-action="cancel"]').onclick = () => newModal.destroy();
+    newModal.element.querySelector('[data-action="save"]').onclick = async () => {
+        const name = newModal.element.querySelector('#edit-client-name').value.trim();
+        const phone = newModal.element.querySelector('#edit-client-phone').value.trim();
+        const email = newModal.element.querySelector('#edit-client-email').value.trim();
+        
+        // Validación
+        if (!name) {
+            toast.error('El nombre es requerido');
+            return;
+        }
+        
+        if (!phone) {
+            toast.error('El teléfono es requerido');
+            return;
+        }
+        
+        // Validar formato de teléfono (10 dígitos)
+        const phoneRegex = /^\d{10}$/;
+        if (!phoneRegex.test(phone)) {
+            toast.error('El teléfono debe tener 10 dígitos');
+            return;
+        }
+        
+        // Validar email si se proporcionó
+        if (email) {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                toast.error('El email no es válido');
+                return;
+            }
+        }
+        
+        try {
+            // Actualizar los datos del cliente
+            await updateClient(clientData.id, {
+                name: name,
+                phone: phone,
+                email: email || null
+            });
+            
+            toast.success('Datos del cliente actualizados correctamente');
+            newModal.destroy();
+            openRepairPanel(repair.id);
+            await loadRepairs();
+        } catch (error) {
+            console.error('Error updating client data:', error);
+            toast.error('Error al actualizar los datos del cliente');
+        }
+    };
+    
+    newModal.open();
+}
+
+/**
+ * Get count of repairs for a client
+ */
+async function getClientRepairCount(clientId) {
+    if (!clientId) return 0;
+    
+    try {
+        const supabase = getSupabase();
+        const { count } = await supabase
+            .from('repairs')
+            .select('id', { count: 'exact', head: true })
+            .eq('client_id', clientId)
+            .eq('is_deleted', false);
+        
+        return count || 0;
+    } catch (error) {
+        console.error('Error getting client repair count:', error);
+        return 0;
+    }
+}
+
+/**
  * Close repair panel
  */
 function closeRepairPanel() {
     $('#repair-panel').classList.remove('active');
     selectedRepairId = null;
+}
+
+/**
+ * Show intake photos modal
+ */
+function showIntakePhotosModal(photos, repair) {
+    if (!photos || photos.length === 0) {
+        toast.info('No hay fotos de ingreso');
+        return;
+    }
+    
+    const photosHtml = photos.map((photo, index) => `
+        <div class="intake-photo-item" style="position: relative; cursor: pointer;" data-index="${index}">
+            <img src="${photo.file_url}" 
+                 alt="Foto ${index + 1}" 
+                 style="width: 100%; height: 200px; object-fit: cover; border-radius: 8px; transition: transform 0.2s;"
+                 onmouseover="this.style.transform='scale(1.05)'"
+                 onmouseout="this.style.transform='scale(1)'">
+            <div style="position: absolute; top: 8px; left: 8px; background: rgba(0,0,0,0.7); color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600;">
+                ${index + 1}/${photos.length}
+            </div>
+            ${photo.description ? `
+                <div style="position: absolute; bottom: 8px; left: 8px; right: 8px; background: rgba(0,0,0,0.7); color: white; padding: 6px 8px; border-radius: 4px; font-size: 11px;">
+                    ${photo.description}
+                </div>
+            ` : ''}
+        </div>
+    `).join('');
+    
+    const newModal = modal.create({
+        title: `📸 Fotos de Ingreso - ${repair.code}`,
+        content: `
+            <div style="margin-bottom: 12px; padding: 12px; background: var(--bg-secondary); border-radius: 8px;">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+                        <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+                    </svg>
+                    <strong>Dispositivo:</strong> ${repair.device_brand} ${repair.device_model}
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                    </svg>
+                    <strong>Fecha de ingreso:</strong> ${formatDateTime(repair.intake_date)}
+                </div>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; max-height: 60vh; overflow-y: auto;">
+                ${photosHtml}
+            </div>
+            <p style="margin-top: 12px; font-size: 12px; color: var(--text-muted); text-align: center;">
+                Haz clic en cualquier foto para verla en tamaño completo
+            </p>
+        `,
+        footer: `
+            <button class="btn btn-secondary" data-action="close">Cerrar</button>
+        `,
+        size: 'large'
+    });
+    
+    // Add click handlers for photos
+    newModal.element.querySelectorAll('.intake-photo-item').forEach((item) => {
+        item.addEventListener('click', () => {
+            const index = parseInt(item.dataset.index);
+            showPhotoLightbox(photos, index);
+        });
+    });
+    
+    newModal.element.querySelector('[data-action="close"]').onclick = () => newModal.destroy();
+    
+    newModal.open();
+}
+
+/**
+ * Show photo lightbox (fullscreen viewer)
+ */
+function showPhotoLightbox(photos, startIndex = 0) {
+    let currentIndex = startIndex;
+    
+    const updatePhoto = () => {
+        const photo = photos[currentIndex];
+        const img = lightbox.querySelector('#lightbox-image');
+        const counter = lightbox.querySelector('#lightbox-counter');
+        const description = lightbox.querySelector('#lightbox-description');
+        
+        img.src = photo.file_url;
+        counter.textContent = `${currentIndex + 1} / ${photos.length}`;
+        description.textContent = photo.description || '';
+        description.style.display = photo.description ? 'block' : 'none';
+    };
+    
+    const lightbox = document.createElement('div');
+    lightbox.id = 'photo-lightbox';
+    lightbox.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.95);
+        z-index: 10000;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        backdrop-filter: blur(5px);
+    `;
+    
+    lightbox.innerHTML = `
+        <div style="position: absolute; top: 16px; left: 16px; right: 16px; display: flex; justify-content: space-between; align-items: center; color: white; z-index: 10001;">
+            <div id="lightbox-counter" style="font-size: 18px; font-weight: 600; background: rgba(0,0,0,0.5); padding: 8px 16px; border-radius: 8px;">
+                ${currentIndex + 1} / ${photos.length}
+            </div>
+            <button id="lightbox-close" style="background: rgba(0,0,0,0.5); border: none; color: white; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 24px; transition: background 0.2s;">
+                ×
+            </button>
+        </div>
+        
+        <div style="flex: 1; display: flex; align-items: center; justify-content: center; width: 100%; padding: 80px 20px 60px;">
+            <img id="lightbox-image" src="${photos[currentIndex].file_url}" style="max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 8px; box-shadow: 0 8px 32px rgba(0,0,0,0.5);">
+        </div>
+        
+        ${photos[currentIndex].description ? `
+            <div id="lightbox-description" style="position: absolute; bottom: 60px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.7); color: white; padding: 12px 24px; border-radius: 8px; max-width: 80%; text-align: center;">
+                ${photos[currentIndex].description}
+            </div>
+        ` : '<div id="lightbox-description" style="display: none;"></div>'}
+        
+        <div style="position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%); display: flex; gap: 12px;">
+            ${photos.length > 1 ? `
+                <button id="lightbox-prev" style="background: rgba(255,255,255,0.9); border: none; color: #333; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-weight: 600; transition: background 0.2s;">
+                    ← Anterior
+                </button>
+                <button id="lightbox-next" style="background: rgba(255,255,255,0.9); border: none; color: #333; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-weight: 600; transition: background 0.2s;">
+                    Siguiente →
+                </button>
+            ` : ''}
+        </div>
+    `;
+    
+    document.body.appendChild(lightbox);
+    
+    // Close button
+    lightbox.querySelector('#lightbox-close').addEventListener('click', () => {
+        lightbox.remove();
+    });
+    
+    // Navigation
+    if (photos.length > 1) {
+        lightbox.querySelector('#lightbox-prev').addEventListener('click', () => {
+            currentIndex = (currentIndex - 1 + photos.length) % photos.length;
+            updatePhoto();
+        });
+        
+        lightbox.querySelector('#lightbox-next').addEventListener('click', () => {
+            currentIndex = (currentIndex + 1) % photos.length;
+            updatePhoto();
+        });
+        
+        // Keyboard navigation
+        const handleKeyboard = (e) => {
+            if (e.key === 'ArrowLeft') {
+                currentIndex = (currentIndex - 1 + photos.length) % photos.length;
+                updatePhoto();
+            } else if (e.key === 'ArrowRight') {
+                currentIndex = (currentIndex + 1) % photos.length;
+                updatePhoto();
+            } else if (e.key === 'Escape') {
+                lightbox.remove();
+                document.removeEventListener('keydown', handleKeyboard);
+            }
+        };
+        
+        document.addEventListener('keydown', handleKeyboard);
+    }
+    
+    // Close on background click
+    lightbox.addEventListener('click', (e) => {
+        if (e.target === lightbox) {
+            lightbox.remove();
+        }
+    });
 }
 
 /**

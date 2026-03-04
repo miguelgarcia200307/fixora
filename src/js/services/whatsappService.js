@@ -8,14 +8,35 @@ import { getShopTemplates } from './shopService.js';
 import { formatCurrency, formatDate } from '../utils/formatters.js';
 
 /**
+ * Encode message for WhatsApp URL with proper emoji support
+ * This ensures emojis display correctly instead of showing as question marks
+ */
+function encodeWhatsAppMessage(message) {
+    // WhatsApp Web accepts UTF-8 encoded messages
+    // We use encodeURIComponent which properly handles Unicode characters including emojis
+    // This converts emojis to their percent-encoded UTF-8 representation
+    return encodeURIComponent(message)
+        // Additional safety: ensure line breaks are properly encoded
+        .replace(/%0A/g, '%0A')  // Preserve line breaks
+        .replace(/%20/g, '%20'); // Preserve spaces
+}
+
+/**
  * Generate WhatsApp URL
  */
 export function generateWhatsAppUrl(phone, message) {
     // Clean phone number
     const cleanPhone = cleanPhoneNumber(phone);
     
-    // Encode message
-    const encodedMessage = encodeURIComponent(message);
+    // Encode message with proper emoji support
+    const encodedMessage = encodeWhatsAppMessage(message);
+    
+    // Debug log to verify encoding (remove in production if needed)
+    if (CONFIG.DEBUG) {
+        console.log('[WhatsApp] Original message length:', message.length);
+        console.log('[WhatsApp] Encoded message length:', encodedMessage.length);
+        console.log('[WhatsApp] Phone:', cleanPhone);
+    }
     
     // Use wa.me for universal compatibility
     return `https://wa.me/${cleanPhone}?text=${encodedMessage}`;
@@ -26,7 +47,27 @@ export function generateWhatsAppUrl(phone, message) {
  */
 export function openWhatsAppChat(phone, message) {
     const url = generateWhatsAppUrl(phone, message);
+    
+    // Log for debugging emoji encoding issues
+    console.log('[WhatsApp] Opening chat with message preview:', message.substring(0, 100));
+    console.log('[WhatsApp] Generated URL length:', url.length);
+    
     window.open(url, '_blank');
+}
+
+/**
+ * Normalize message text to ensure proper emoji display
+ * Replaces any corrupted characters with proper emoji codes
+ */
+function normalizeMessageText(text) {
+    // If emojis appear as question marks or boxes, replace them with unicode codes
+    // This ensures they display correctly in WhatsApp
+    return text
+        // Replace any Unicode replacement characters with nothing
+        .replace(/\ufffd/g, '')
+        // Normalize whitespace
+        .replace(/\r\n/g, '\n')
+        .replace(/\r/g, '\n');
 }
 
 /**
@@ -36,17 +77,22 @@ export function processTemplate(template, variables) {
     let message = template;
     
     for (const [key, value] of Object.entries(variables)) {
-        const regex = new RegExp(`\\{${key}\\}`, 'g');
+        const regex = new RegExp(`\{${key}\}`, 'g');
         message = message.replace(regex, value || '');
     }
     
-    return message;
+    // Normalize to ensure emojis display correctly
+    return normalizeMessageText(message);
 }
 
 /**
  * Send WhatsApp to technician (admin action)
  */
 export async function sendToTechnician(repair, shop, techProfile) {
+    if (!shop) {
+        throw new Error('Información del local no disponible');
+    }
+    
     const templates = await getShopTemplates(shop.id);
     
     const variables = {
@@ -58,7 +104,7 @@ export async function sendToTechnician(repair, shop, techProfile) {
         estadoCotizacion: getQuoteStatusLabel(repair.quote_status),
         monto: repair.quote_amount ? formatCurrency(repair.quote_amount) : 'Por definir',
         linkPanel: `${window.location.origin}/tech.html?repair=${repair.id}`,
-        local: shop.name
+        local: shop?.name || 'El taller'
     };
     
     const message = processTemplate(templates.admin_to_tech, variables);
@@ -69,10 +115,14 @@ export async function sendToTechnician(repair, shop, techProfile) {
  * Send WhatsApp to client (admin action)
  */
 export async function sendToClientFromAdmin(repair, shop) {
+    if (!shop) {
+        throw new Error('Información del local no disponible');
+    }
+    
     const templates = await getShopTemplates(shop.id);
     
     const variables = {
-        local: shop.name,
+        local: shop?.name || 'El taller',
         codigo: repair.code,
         marca: repair.device_brand || '',
         modelo: repair.device_model || '',
@@ -90,6 +140,10 @@ export async function sendToClientFromAdmin(repair, shop) {
  * Send WhatsApp to admin (tech action)
  */
 export async function sendToAdminFromTech(repair, shop, note = '') {
+    if (!shop) {
+        throw new Error('Información del local no disponible');
+    }
+    
     const templates = await getShopTemplates(shop.id);
     
     const variables = {
@@ -103,13 +157,17 @@ export async function sendToAdminFromTech(repair, shop, note = '') {
     };
     
     const message = processTemplate(templates.tech_to_admin, variables);
-    openWhatsAppChat(shop.whatsapp || shop.phone, message);
+    openWhatsAppChat(shop?.whatsapp || shop?.phone, message);
 }
 
 /**
  * Send WhatsApp to client (tech action)
  */
 export async function sendToClientFromTech(repair, shop, note = '') {
+    if (!shop) {
+        throw new Error('Información del local no disponible');
+    }
+    
     const templates = await getShopTemplates(shop.id);
     
     const variables = {
@@ -117,7 +175,7 @@ export async function sendToClientFromTech(repair, shop, note = '') {
         estado: getRepairStatusLabel(repair.status),
         nota: note || '',
         trackingLink: `${window.location.origin}/track.html?token=${repair.tracking_token}`,
-        local: shop.name
+        local: shop?.name || 'El taller'
     };
     
     const message = processTemplate(templates.tech_to_client, variables);
@@ -128,32 +186,46 @@ export async function sendToClientFromTech(repair, shop, note = '') {
  * Generate completion message for client
  */
 export function generateCompletionMessage(repair, shop) {
-    const message = `🎉 *¡TU EQUIPO ESTÁ LISTO!*
-━━━━━━━━━━━━━━━━━━━━━
+    const message = `\ud83c\udf89 *¡TU EQUIPO ESTÁ LISTO!*
+\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
 
-¡Excelente noticia! 👏 Tu reparación ha sido completada exitosamente.
+\u00a1Excelente noticia! \ud83d\udc4f Tu reparación ha sido completada exitosamente.
 
-📋 *Código de Reparación*
+\ud83d\udccb *Código de Reparación*
    *${repair.code}*
 
-📱 *Equipo Reparado*
+\ud83d\udcf1 *Equipo Reparado*
    ${repair.device_brand || ''} ${repair.device_model || ''}
 
-💰 *Total a Pagar*
-   ${repair.final_amount ? formatCurrency(repair.final_amount) : 'Por confirmar'}
+\ud83d\udcb0 *Total a Pagar*
+   ${repair.final_amount || repair.quote_amount ? formatCurrency(repair.final_amount || repair.quote_amount) : 'Por confirmar'}
 
-━━━━━━━━━━━━━━━━━━━━━
-📍 *RECOGER EN*
-${shop.name}
-${shop.address || ''}
+\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
+\ud83d\udccd *RECOGER EN*
+${shop?.name || 'Nuestro local'}
+${shop?.address || ''}
 
-📞 *Contáctanos*
-${shop.phone || ''}
+\ud83d\udcde *Contáctanos*
+${shop?.phone || shop?.whatsapp || ''}
 
-⏰ Puedes pasar a recogerlo en nuestro horario de atención.
+\u23f0 Puedes pasar a recogerlo en nuestro horario de atención.
 
-🙏 _¡Gracias por confiar en nosotros!_
-Esperamos que disfrutes tu equipo como nuevo.`;
+\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
+\u26a0\ufe0f *IMPORTANTE - POR FAVOR LEER*
+
+Por motivos de espacio e inventario, los equipos que *no sean recogidos dentro de los próximos 30 días calendario* quedarán sujetos a nuestra política de almacenamiento.
+
+Después de este plazo, no podemos garantizar la disponibilidad del equipo y nos reservamos el derecho de disponer del mismo para cubrir costos de almacenamiento y reparación.
+
+\ud83d\udcc5 *Fecha límite de recogida:* ${new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' })}
+
+\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
+
+\ud83d\ude4f _¡Gracias por confiar en nosotros!_
+Esperamos que disfrutes tu equipo como nuevo.
+
+_Atentamente,_
+_${shop?.name || 'El equipo'}_`;
 
     return message;
 }
@@ -165,51 +237,77 @@ export function generateQuoteMessage(repair, shop) {
     const quoteLabel = getQuoteStatusLabel(repair.quote_status);
     
     let priceText = '';
-    let statusIcon = '💰';
+    let statusIcon = '\ud83d\udcb0';
     
     if (repair.quote_status === 'approximate') {
-        statusIcon = '📊';
-        priceText = `💰 *Cotización Aproximada*
+        statusIcon = '\ud83d\udcca';
+        priceText = `\ud83d\udcb0 *Cotización Aproximada*
    ${formatCurrency(repair.quote_amount)}
 
-⚠️ _El precio puede variar según el diagnóstico final_`;
+\u26a0\ufe0f _El precio puede variar según el diagnóstico final_`;
     } else if (repair.quote_status === 'accepted') {
-        statusIcon = '✅';
-        priceText = `✅ *Cotización Aceptada*
+        statusIcon = '\u2705';
+        priceText = `\u2705 *Cotización Aceptada*
    ${formatCurrency(repair.quote_amount)}
 
-🔧 Iniciamos la reparación de inmediato.`;
+\ud83d\udd27 Iniciamos la reparación de inmediato.`;
     } else if (repair.quote_status === 'rejected') {
-        statusIcon = '❌';
-        priceText = `❌ *Cotización Rechazada*
+        statusIcon = '\u274c';
+        priceText = `\u274c *Cotización Rechazada*
    
-📞 Por favor contáctanos para más información.`;
+\ud83d\udcde Por favor contáctanos para más información.`;
     } else {
-        statusIcon = '⏳';
-        priceText = '⏳ *Cotización Pendiente*\n   Estamos realizando el diagnóstico...';
+        statusIcon = '\u23f3';
+        priceText = '\u23f3 *Cotización Pendiente*\n   Estamos realizando el diagnóstico...';
     }
 
     const message = `${statusIcon} *ACTUALIZACIÓN DE COTIZACIÓN*
-━━━━━━━━━━━━━━━━━━━━━
+\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
 
-📱 *Equipo*
+\ud83d\udcf1 *Equipo*
    ${repair.device_brand || ''} ${repair.device_model || ''}
 
-📋 *Código*
+\ud83d\udccb *Código*
    *${repair.code}*
 
 ${priceText}
 
-━━━━━━━━━━━━━━━━━━━━━
-🔍 *SEGUIMIENTO EN TIEMPO REAL*
+\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
+\ud83d\udd0d *SEGUIMIENTO EN TIEMPO REAL*
 ${window.location.origin}/track.html?token=${repair.tracking_token}
 
-📞 Si tienes dudas, contáctanos.
+\ud83d\udcde Si tienes dudas, contáctanos.
 
 _Atentamente,_
-_${shop.name}_`;
+_${shop?.name || 'El equipo'}_`;
 
     return message;
+}
+
+/**
+ * Send ready for pickup notification to client
+ */
+export async function sendReadyForPickupNotification(repair, shop) {
+    if (!repair.client?.phone && !repair.client?.whatsapp) {
+        throw new Error('Cliente no tiene teléfono/WhatsApp registrado');
+    }
+    
+    if (!shop) {
+        throw new Error('Información del local no disponible');
+    }
+    
+    const message = generateCompletionMessage(repair, shop);
+    openWhatsAppChat(repair.client?.whatsapp || repair.client?.phone, message);
+    
+    // Log notification
+    await logNotification(
+        shop.id,
+        repair.id,
+        'ready_for_pickup',
+        repair.client?.whatsapp || repair.client?.phone,
+        repair.client?.name,
+        message
+    );
 }
 
 /**

@@ -560,6 +560,26 @@ function getEmptyTechStats() {
     };
 }
 
+/**
+ * Update client information
+ */
+export async function updateClient(clientId, updates) {
+    const { name, phone, email } = updates;
+    
+    const updateData = {};
+    if (name !== undefined) updateData.name = name;
+    if (phone !== undefined) {
+        updateData.phone = phone;
+        updateData.whatsapp = phone; // También actualizar WhatsApp con el nuevo teléfono
+    }
+    if (email !== undefined) updateData.email = email;
+    
+    return update('clients', updateData,
+        [{ column: 'id', operator: 'eq', value: clientId }],
+        { select: '*', single: true }
+    );
+}
+
 // ==================== REALTIME ====================
 
 /**

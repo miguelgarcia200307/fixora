@@ -116,102 +116,102 @@ export const CONFIG = {
     
     // Plantillas de mensajes WhatsApp por defecto
     WHATSAPP_TEMPLATES: {
-        ADMIN_TO_TECH: `🔧 *NUEVA REPARACIÓN ASIGNADA*
-━━━━━━━━━━━━━━━━━━━━━
+        ADMIN_TO_TECH: `\ud83d\udd27 *NUEVA REPARACIÓN ASIGNADA*
+\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
 
-📋 *Código de Reparación*
+\ud83d\udccb *Código de Reparación*
    {codigo}
 
-👤 *Cliente*
+\ud83d\udc64 *Cliente*
    {cliente}
 
-📱 *Dispositivo*
+\ud83d\udcf1 *Dispositivo*
    {marca} {modelo}
 
-🔍 *Motivo de Ingreso*
+\ud83d\udd0d *Motivo de Ingreso*
    {motivo}
 
-💰 *Cotización*
+\ud83d\udcb0 *Cotización*
    Estado: {estadoCotizacion}
    Monto: {monto}
 
-━━━━━━━━━━━━━━━━━━━━━
-🎯 *ACCESO DIRECTO AL PANEL*
+\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
+\ud83c\udfaf *ACCESO DIRECTO AL PANEL*
 {linkPanel}
 
-⚡ Por favor revisa los detalles y actualiza el estado en cuanto puedas.
+\u26a1 Por favor revisa los detalles y actualiza el estado en cuanto puedas.
 
 _Enviado desde {local}_`,
 
-        ADMIN_TO_CLIENT: `✅ *¡RECIBIMOS TU EQUIPO!*
-━━━━━━━━━━━━━━━━━━━━━
+        ADMIN_TO_CLIENT: `\u2705 *¡RECIBIMOS TU EQUIPO!*
+\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
 
-¡Hola! 👋 Tu dispositivo ha sido registrado exitosamente en nuestro sistema.
+\u00a1Hola! \ud83d\udc4b Tu dispositivo ha sido registrado exitosamente en nuestro sistema.
 
-📍 *Taller*
+\ud83d\udccd *Taller*
    {local}
 
-📋 *Tu Código de Seguimiento*
+\ud83d\udccb *Tu Código de Seguimiento*
    *{codigo}*
 
-📱 *Equipo Recibido*
+\ud83d\udcf1 *Equipo Recibido*
    {marca} {modelo}
 
-💰 *Estado de Cotización*
+\ud83d\udcb0 *Estado de Cotización*
    {estadoCotizacion} - {monto}
 
-━━━━━━━━━━━━━━━━━━━━━
-🔍 *RASTREA TU REPARACIÓN EN TIEMPO REAL*
+\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
+\ud83d\udd0d *RASTREA TU REPARACIÓN EN TIEMPO REAL*
 {trackingLink}
 
-📌 *Importante:* Guarda este código para consultar el estado de tu reparación en cualquier momento.
+\ud83d\udccc *Importante:* Guarda este código para consultar el estado de tu reparación en cualquier momento.
 
-🙏 _¡Gracias por confiar en nosotros!_
+\ud83d\ude4f _¡Gracias por confiar en nosotros!_
 Trabajaremos para devolverte tu equipo lo antes posible.`,
 
-        TECH_TO_ADMIN: `📢 *ACTUALIZACIÓN DE REPARACIÓN*
-━━━━━━━━━━━━━━━━━━━━━
+        TECH_TO_ADMIN: `\ud83d\udce2 *ACTUALIZACIÓN DE REPARACIÓN*
+\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
 
-🆔 *Código*
+\ud83c\udd94 *Código*
    {codigo}
 
-👤 *Cliente*
+\ud83d\udc64 *Cliente*
    {cliente}
 
-📱 *Equipo*
+\ud83d\udcf1 *Equipo*
    {marca} {modelo}
 
-🔄 *Estado Actualizado*
+\ud83d\udd04 *Estado Actualizado*
    {estado}
 
-📝 *Observaciones del Técnico*
+\ud83d\udcdd *Observaciones del Técnico*
    {nota}
 
-━━━━━━━━━━━━━━━━━━━━━
-🔗 *VER DETALLES COMPLETOS*
+\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
+\ud83d\udd17 *VER DETALLES COMPLETOS*
 {linkPanel}
 
 _Actualización enviada desde el panel técnico_`,
 
-        TECH_TO_CLIENT: `📱 *ACTUALIZACIÓN DE TU EQUIPO*
-━━━━━━━━━━━━━━━━━━━━━
+        TECH_TO_CLIENT: `\ud83d\udcf1 *ACTUALIZACIÓN DE TU EQUIPO*
+\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
 
-¡Hola! 👋 Tenemos novedades sobre tu reparación.
+\u00a1Hola! \ud83d\udc4b Tenemos novedades sobre tu reparación.
 
-📋 *Código de Seguimiento*
+\ud83d\udccb *Código de Seguimiento*
    *{codigo}*
 
-🔄 *Estado Actual*
+\ud83d\udd04 *Estado Actual*
    {estado}
 
-📝 *Mensaje del Técnico*
+\ud83d\udcdd *Mensaje del Técnico*
    {nota}
 
-━━━━━━━━━━━━━━━━━━━━━
-🔍 *VER DETALLES COMPLETOS*
+\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
+\ud83d\udd0d *VER DETALLES COMPLETOS*
 {trackingLink}
 
-📞 Si tienes alguna pregunta, no dudes en contactarnos.
+\ud83d\udcde Si tienes alguna pregunta, no dudes en contactarnos.
 
 _Atentamente,_
 _{local}_`
