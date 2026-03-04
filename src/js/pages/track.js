@@ -436,15 +436,23 @@ async function loadStages(repairId, trackingToken = currentTrackingToken) {
             stages = publicStages || [];
 
             if (stages.length > 0) {
+                // Load evidence for each stage
                 const evidenceResponses = await Promise.all(
-                    stages.map(stage =>
-                        supabase
-                            .rpc('get_stage_evidence_by_stage', {
-                                p_stage_id: stage.id,
-                                p_token: trackingToken
-                            })
-                            .catch(() => ({ data: [] }))
-                    )
+                    stages.map(async (stage) => {
+                        try {
+                            const { data, error } = await supabase
+                                .rpc('get_stage_evidence_by_stage', {
+                                    p_stage_id: stage.id,
+                                    p_token: trackingToken
+                                });
+                            
+                            if (error) throw error;
+                            return { data: data || [] };
+                        } catch (err) {
+                            console.warn('Error loading evidence for stage:', stage.id, err);
+                            return { data: [] };
+                        }
+                    })
                 );
 
                 stages = stages.map((stage, index) => ({
@@ -533,6 +541,17 @@ async function loadStages(repairId, trackingToken = currentTrackingToken) {
         
     } catch (error) {
         console.error('Error loading stages:', error);
+        
+        // Show error details if it's an RPC error
+        if (error.message?.includes('Could not find the function') || error.code === '42883') {
+            console.error('⚠️ FUNCIONES RPC NO ENCONTRADAS. Ejecuta el archivo supabase/fix_tracking_rpc.sql en Supabase SQL Editor');
+        }
+        
+        const timelineCard = $('#timeline-card');
+        if (timelineCard) {
+            timelineCard.style.display = 'none';
+        }
+        
         return { changed: false, count: 0 };
     }
 }
