@@ -17,9 +17,10 @@ import {
     assignTechnician,
     subscribeToRepairs,
     getRepairStats,
-    updateClient
+    updateClient,
+    deleteRepairPermanently
 } from '../services/repairService.js';
-import { uploadIntakeEvidence, getIntakeEvidence, uploadShopLogo } from '../services/storageService.js';
+import { uploadIntakeEvidence, getIntakeEvidence, uploadShopLogo, deleteRepairStorageFiles } from '../services/storageService.js';
 import { sendToClientFromAdmin, sendToTechnician } from '../services/whatsappService.js';
 import { getSupabase } from '../services/supabaseService.js';
 import { 
@@ -3692,7 +3693,6 @@ function setupEventListeners() {
     
     // New repair buttons
     $('#btn-new-repair')?.addEventListener('click', openRepairWizard);
-    $('#btn-new-repair-section')?.addEventListener('click', openRepairWizard);
     $('#quick-new-repair')?.addEventListener('click', openRepairWizard);
     
     // Quick actions
@@ -4398,6 +4398,12 @@ function renderRepairPanelBody(repair, stages, intakeEvidence = []) {
                     </svg>
                     Enviar WhatsApp
                 </button>
+                <button class="btn btn-danger" id="btn-delete-repair" style="margin-left: auto;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6"/>
+                    </svg>
+                    Eliminar
+                </button>
             </div>
         </div>
     `;
@@ -4446,6 +4452,8 @@ function renderRepairPanelBody(repair, stages, intakeEvidence = []) {
     $('#btn-edit-client')?.addEventListener('click', () => updateClientData(repair));
     
     $('#btn-view-intake-photos')?.addEventListener('click', () => showIntakePhotosModal(intakeEvidence, repair));
+    
+    $('#btn-delete-repair')?.addEventListener('click', () => confirmDeleteRepair(repair));
 }
 
 /**
@@ -5554,6 +5562,112 @@ async function getClientRepairCount(clientId) {
 function closeRepairPanel() {
     $('#repair-panel').classList.remove('active');
     selectedRepairId = null;
+}
+
+/**
+ * Confirm and permanently delete repair
+ * Deletes repair from database and all associated storage files
+ */
+async function confirmDeleteRepair(repair) {
+    // Create confirmation modal as a promise
+    const confirmed = await new Promise((resolve) => {
+        const deleteModal = modal.create({
+            title: '⚠️ Eliminar Reparación Permanentemente',
+            content: `
+                <div class="delete-confirmation-content" style="padding: 20px;">
+                    <div style="background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                            <svg style="width: 24px; height: 24px; color: #ffc107; flex-shrink: 0;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                            </svg>
+                            <strong style="color: #856404; font-size: 16px;">Operación Irreversible</strong>
+                        </div>
+                        <p style="color: #856404; margin: 0; line-height: 1.5;">
+                            Esta acción eliminará <strong>permanentemente</strong> la reparación y todos sus archivos asociados. <strong>No se puede deshacer.</strong>
+                        </p>
+                    </div>
+                    
+                    <div style="background: #f8f9fa; border-radius: 8px; padding: 16px; margin-bottom: 16px;">
+                        <p style="margin: 0 0 12px 0; color: #666; font-size: 14px; font-weight: 600;">Se eliminará la siguiente reparación:</p>
+                        <div style="display: grid; gap: 8px;">
+                            <div style="display: flex; justify-content: space-between;">
+                                <span style="color: #666;">Código:</span>
+                                <strong style="color: #000;">${repair.code || 'N/A'}</strong>
+                            </div>
+                            <div style="display: flex; justify-content: space-between;">
+                                <span style="color: #666;">Cliente:</span>
+                                <strong style="color: #000;">${repair.client?.name || 'N/A'}</strong>
+                            </div>
+                            <div style="display: flex; justify-content: space-between;">
+                                <span style="color: #666;">Dispositivo:</span>
+                                <strong style="color: #000;">${repair.device_model || 'N/A'}</strong>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="background: #f8d7da; border: 1px solid #f5c6cb; border-radius: 8px; padding: 12px; margin-bottom: 12px;">
+                        <p style="color: #721c24; margin: 0 0 8px 0; font-weight: 600; font-size: 14px;">Se eliminarán:</p>
+                        <ul style="color: #721c24; margin: 0; padding-left: 20px; font-size: 13px; line-height: 1.8;">
+                            <li>Registro de la reparación en la base de datos</li>
+                            <li>Todas las etapas y estados</li>
+                            <li>Fotos de ingreso</li>
+                            <li>Fotos de todas las etapas</li>
+                            <li>Historial completo de cambios</li>
+                        </ul>
+                    </div>
+                    
+                    <p style="color: #dc3545; margin: 0; font-size: 13px; font-weight: 600; text-align: center;">
+                        ¿Está seguro de que desea eliminar esta reparación?
+                    </p>
+                </div>
+            `,
+            footer: `
+                <button class="btn btn-secondary" data-action="cancel">Cancelar</button>
+                <button class="btn btn-danger" data-action="confirm">Sí, Eliminar Definitivamente</button>
+            `,
+            size: 'medium'
+        });
+        
+        deleteModal.element.querySelector('[data-action="cancel"]').onclick = () => {
+            deleteModal.destroy();
+            resolve(false);
+        };
+        
+        deleteModal.element.querySelector('[data-action="confirm"]').onclick = () => {
+            deleteModal.destroy();
+            resolve(true);
+        };
+        
+        deleteModal.open();
+    });
+
+    if (!confirmed) return;
+
+    try {
+        // Show processing message
+        toast.info('Eliminando reparación y archivos...');
+
+        // 1. First delete all storage files
+        console.log('Deleting storage files for repair:', repair.repair_code);
+        const storageResult = await deleteRepairStorageFiles(repair.shop_id, repair.id);
+        
+        console.log('Storage deletion result:', storageResult);
+        
+        // 2. Then delete the repair from database (CASCADE will handle related records)
+        console.log('Deleting repair from database:', repair.id);
+        await deleteRepairPermanently(repair.id);
+        
+        // 3. Close panel and refresh list
+        closeRepairPanel();
+        await loadRepairs();
+        
+        // 4. Show success message
+        toast.success(`Reparación ${repair.repair_code} eliminada definitivamente`);
+        
+    } catch (error) {
+        console.error('Error deleting repair:', error);
+        toast.error(`Error al eliminar: ${error.message || 'Error desconocido'}`);
+    }
 }
 
 /**

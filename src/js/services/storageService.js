@@ -183,6 +183,79 @@ export async function deleteFile(bucket, path) {
 }
 
 /**
+ * Delete all files from a repair folder in storage
+ */
+export async function deleteRepairStorageFiles(shopId, repairId) {
+    const client = getSupabase();
+    if (!client) throw new Error('Supabase not initialized');
+
+    const results = {
+        intake: { success: false, files: [] },
+        stages: { success: false, files: [] }
+    };
+
+    // Delete intake evidence files
+    try {
+        const intakePath = `${shopId}/${repairId}`;
+        const { data: intakeFiles } = await client.storage
+            .from(CONFIG.STORAGE_BUCKETS.INTAKE_EVIDENCE)
+            .list(intakePath);
+
+        if (intakeFiles && intakeFiles.length > 0) {
+            const intakePaths = intakeFiles.map(f => `${intakePath}/${f.name}`);
+            await client.storage
+                .from(CONFIG.STORAGE_BUCKETS.INTAKE_EVIDENCE)
+                .remove(intakePaths);
+            results.intake = { success: true, files: intakePaths };
+        } else {
+            results.intake.success = true; // No files to delete
+        }
+    } catch (error) {
+        console.error('Error deleting intake evidence files:', error);
+    }
+
+    // Delete stage evidence files
+    try {
+        const stagePath = `${shopId}/${repairId}`;
+        const { data: stageFiles } = await client.storage
+            .from(CONFIG.STORAGE_BUCKETS.STAGE_EVIDENCE)
+            .list(stagePath);
+
+        if (stageFiles && stageFiles.length > 0) {
+            // Need to list subdirectories (stages)
+            const allStagePaths = [];
+            for (const stageFolder of stageFiles) {
+                if (stageFolder.name) {
+                    const { data: files } = await client.storage
+                        .from(CONFIG.STORAGE_BUCKETS.STAGE_EVIDENCE)
+                        .list(`${stagePath}/${stageFolder.name}`);
+                    if (files) {
+                        files.forEach(f => {
+                            allStagePaths.push(`${stagePath}/${stageFolder.name}/${f.name}`);
+                        });
+                    }
+                }
+            }
+
+            if (allStagePaths.length > 0) {
+                await client.storage
+                    .from(CONFIG.STORAGE_BUCKETS.STAGE_EVIDENCE)
+                    .remove(allStagePaths);
+                results.stages = { success: true, files: allStagePaths };
+            } else {
+                results.stages.success = true;
+            }
+        } else {
+            results.stages.success = true;
+        }
+    } catch (error) {
+        console.error('Error deleting stage evidence files:', error);
+    }
+
+    return results;
+}
+
+/**
  * Compress image before upload
  */
 async function compressImage(file) {

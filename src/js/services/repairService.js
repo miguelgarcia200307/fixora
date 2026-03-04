@@ -606,3 +606,36 @@ export function subscribeToStages(repairId, callback) {
 export function getTrackingUrl(trackingToken) {
     return `${window.location.origin}/track.html?token=${trackingToken}`;
 }
+
+/**
+ * Delete repair permanently (hard delete)
+ * WARNING: This is irreversible!
+ */
+export async function deleteRepairPermanently(repairId) {
+    const client = getSupabase();
+    if (!client) throw new Error('Supabase not initialized');
+
+    // Get repair info before deletion for cleanup
+    const { data: repair } = await client
+        .from('repairs')
+        .select('id, shop_id, code')
+        .eq('id', repairId)
+        .single();
+
+    if (!repair) {
+        throw new Error('Reparación no encontrada');
+    }
+
+    // Delete repair (CASCADE will handle stages, evidences in DB)
+    const { error } = await client
+        .from('repairs')
+        .delete()
+        .eq('id', repairId);
+
+    if (error) {
+        console.error('Error deleting repair:', error);
+        throw error;
+    }
+
+    return repair;
+}
